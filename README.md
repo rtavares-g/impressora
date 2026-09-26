@@ -50,7 +50,28 @@ avahi-browse -rt _ipp._tcp | grep -A8 SCX    # anúncio AirPrint (procure URF= e
 journalctl -u cups -f                        # log do CUPS
 ```
 
-Painel web do CUPS (só no próprio Pi): <http://localhost:631>
+## Painel do CUPS
+
+O painel web vem desligado no Debian; foi ligado com
+`sudo cupsctl WebInterface=yes`.
+
+| De onde | Endereço |
+|---|---|
+| Fora de casa | <https://impressora.rtavares.net> (login do Cloudflare Access) |
+| Rede de casa | <http://192.168.1.10:631> (só consulta: fila e impressora) |
+| No próprio Pi | <http://localhost:631> |
+
+O acesso externo passa pelo Cloudflare Tunnel do Raspberry Pi
+(`impressora.rtavares.net` → `http://localhost:631`) e é protegido pelo
+Cloudflare Access. A rota do túnel precisa de **HTTP Host Header =
+`localhost:631`**: em conexões vindas do próprio Pi (que é de onde o
+`cloudflared` se conecta) o CUPS só aceita o nome `localhost` e responde
+400 para qualquer outro, e `ServerAlias` não muda isso.
+
+Pelo túnel o CUPS vê a conexão como local, então as páginas de
+administração funcionam depois do login do Access, pedindo o usuário e a
+senha do Pi. Pela rede de casa a administração fica bloqueada
+(`--no-remote-admin`). A impressão via AirPrint continua só na rede local.
 
 ## Problemas comuns
 
