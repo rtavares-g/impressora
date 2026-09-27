@@ -16,6 +16,24 @@ sudo usermod -aG lpadmin "$USER"
 echo "==> Liberando o compartilhamento só na rede local (sem administração remota)"
 sudo cupsctl --share-printers --no-remote-admin --no-remote-any
 
+echo "==> Ligando o painel web, com administração sem senha só a partir do próprio Pi"
+# Pelo Cloudflare Tunnel (já protegido pelo Access) o CUPS vê a conexão como
+# localhost; pela rede de casa /admin e as operações de administração seguem
+# bloqueadas. Pode rodar de novo: só troca o que ainda estiver no padrão.
+sudo cupsctl WebInterface=yes
+sudo python3 - /etc/cups/cupsd.conf <<'EOF'
+import re, sys
+p = sys.argv[1]
+s = open(p).read()
+s = re.sub(r"(<Location /admin[^>]*>\n)  AuthType Default\n  Require user @SYSTEM\n  Order allow,deny\n",
+           r"\1  Order allow,deny\n  Allow localhost\n", s)
+pol = re.search(r"<Policy default>.*?</Policy>", s, flags=re.S)
+bloco = re.sub(r"(<Limit (?:CUPS-Add-Modify-Printer|Pause-Printer)[^>]*>\n)    AuthType Default\n    Require user @SYSTEM\n    Order deny,allow\n",
+               r"\1    Order deny,allow\n    Deny all\n    Allow localhost\n", pol.group(0))
+open(p, "w").write(s[:pol.start()] + bloco + s[pol.end():])
+EOF
+sudo systemctl restart cups
+
 echo "==> Procurando a impressora na USB"
 # O cupsctl faz o CUPS encerrar e o systemd subir de novo; até lá as
 # consultas falham com "Connection reset by peer", então tenta algumas vezes.
