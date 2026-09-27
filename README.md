@@ -52,8 +52,9 @@ journalctl -u cups -f                        # log do CUPS
 
 ## Painel do CUPS
 
-O painel web vem desligado no Debian; foi ligado com
-`sudo cupsctl WebInterface=yes`.
+O painel web vem desligado no Debian; o `install.sh` liga
+(`cupsctl WebInterface=yes`) e tira a senha da administração para conexões
+vindas do próprio Pi.
 
 | De onde | Endereço |
 |---|---|
@@ -69,9 +70,10 @@ Cloudflare Access. A rota do túnel precisa de **HTTP Host Header =
 400 para qualquer outro, e `ServerAlias` não muda isso.
 
 Pelo túnel o CUPS vê a conexão como local, então as páginas de
-administração funcionam depois do login do Access, pedindo o usuário e a
-senha do Pi. Pela rede de casa a administração fica bloqueada
-(`--no-remote-admin`). A impressão via AirPrint continua só na rede local.
+administração abrem direto depois do login do Access, sem pedir usuário e
+senha do Pi: o `/admin` e as operações de administração (adicionar,
+alterar, pausar impressora) não exigem senha, mas só são aceitos a partir de
+`localhost`. Pela rede de casa a administração fica bloqueada (403). A impressão via AirPrint continua só na rede local.
 
 ## Problemas comuns
 
