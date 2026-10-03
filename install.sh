@@ -67,3 +67,18 @@ echo
 echo "Pronto. Fila: $FILA"
 lpstat -p "$FILA"
 echo "Teste local: lp -d $FILA /usr/share/cups/data/testprint"
+
+echo "==> Serviço que liga/desliga a tomada Tuya da impressora"
+# tinytuya num venv; cryptography vem do apt para não compilar no Pi.
+sudo apt-get install -y python3-venv python3-cryptography
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+python3 -m venv --system-site-packages "$DIR/.venv"
+"$DIR/.venv/bin/pip" install --quiet --upgrade tinytuya
+mkdir -p "$HOME/.config/impressora-energia"
+sed -e "s|__USER__|$USER|g" -e "s|__HOME__|$HOME|g" "$DIR/impressora-energia.service" \
+    | sudo tee /etc/systemd/system/impressora-energia.service > /dev/null
+sudo systemctl daemon-reload
+sudo systemctl enable --now impressora-energia
+if [ ! -f "$HOME/.config/impressora-energia/config.json" ]; then
+    echo "    Falta configurar a tomada: veja \"Tomada Tuya\" no README."
+fi

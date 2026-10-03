@@ -1,0 +1,16 @@
+[Unit]
+Description=Liga a tomada Tuya da impressora quando chega trabalho no CUPS
+After=network-online.target cups.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__HOME__/impressora
+Environment=PYTHONUNBUFFERED=1
+ExecStart=__HOME__/impressora/.venv/bin/python __HOME__/impressora/energia.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
