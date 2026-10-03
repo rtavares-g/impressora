@@ -75,6 +75,52 @@ senha do Pi: o `/admin` e as operações de administração (adicionar,
 alterar, pausar impressora) não exigem senha, mas só são aceitos a partir de
 `localhost`. Pela rede de casa a administração fica bloqueada (403). A impressão via AirPrint continua só na rede local.
 
+## Tomada Tuya (liga sozinha)
+
+A impressora fica numa tomada inteligente Tuya (app Smart Life). O serviço
+`impressora-energia` (`energia.py`) olha a fila a cada 3 s:
+
+- **Chegou trabalho e a impressora não está na USB** → liga a tomada. O
+  backend USB do CUPS fica em "Waiting for printer to become available" e
+  imprime assim que ela aparece.
+- **Fila vazia há 10 min** (contados do último trabalho ou de quando a
+  impressora apareceu na USB) → desliga a tomada. Se você ligar na mão para
+  tirar cópia, ela também desliga depois de 10 min.
+
+A tomada é controlada pela rede local (protocolo Tuya local, sem nuvem), mas
+para isso precisa do **Device ID** e da **Local Key**, que se conseguem uma
+vez pela Tuya IoT Platform:
+
+1. Crie uma conta em <https://platform.tuya.com> → **Cloud → Development →
+   Create Cloud Project** (Development Method: Smart Home, Data Center:
+   **Western America** se a conta do Smart Life for do Brasil). Anote o
+   **Access ID** e o **Access Secret**.
+2. No projeto, **Devices → Link App Account → Add App Account** e leia o QR
+   com o Smart Life (Eu → ícone de leitura no canto). As tomadas aparecem na
+   lista.
+3. No Pi:
+
+   ```bash
+   cd ~/.config/impressora-energia && ~/impressora/.venv/bin/python -m tinytuya wizard
+   ~/impressora/.venv/bin/python ~/impressora/energia.py configurar
+   sudo systemctl restart impressora-energia
+   ```
+
+   O wizard pede o Access ID/Secret, a região (`us` para Western America) e
+   o ID de algum dispositivo seu (Smart Life → dispositivo → lápis →
+   Informações) e grava `devices.json` com as chaves. O `configurar` mostra a
+   lista, você escolhe a tomada e ele salva `config.json` (fora do git).
+
+O tempo para desligar fica em `desligar_apos_min` no
+`~/.config/impressora-energia/config.json`. A Local Key muda se a tomada for
+removida e pareada de novo no app: aí rode o wizard e o `configurar` de novo.
+
+```bash
+~/impressora/.venv/bin/python ~/impressora/energia.py estado     # tomada e USB
+~/impressora/.venv/bin/python ~/impressora/energia.py ligar      # ou desligar
+journalctl -u impressora-energia -f
+```
+
 ## Problemas comuns
 
 | Sintoma | O que fazer |
@@ -82,4 +128,5 @@ alterar, pausar impressora) não exigem senha, mas só são aceitos a partir de
 | Não aparece no iPhone | Confira se o aparelho está na mesma rede (192.168.1.x) e se `avahi-browse` mostra a impressora |
 | Trabalho fica parado | `lpstat -p`: se estiver "disabled", rode `cupsenable Samsung_SCX4200` |
 | Trabalho falha com "Unable to send data to printer" e a impressora desconecta da USB | Geralmente é falta de papel: a impressora para de aceitar dados. Coloque papel e rode `cupsenable Samsung_SCX4200` |
+| Trabalho parado em "Waiting for printer to become available" | A tomada não ligou: veja `journalctl -u impressora-energia` e `energia.py estado` |
 | Impressora desligada ou reconectada | O CUPS retoma sozinho quando ela volta; se não, rode `./install.sh` de novo |
