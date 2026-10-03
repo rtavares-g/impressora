@@ -58,12 +58,12 @@ vindas do próprio Pi.
 
 | De onde | Endereço |
 |---|---|
-| Fora de casa | <https://impressora.rtavares.net> (login do Cloudflare Access) |
+| Fora de casa | <https://impressora.tavares.nz> (login do Cloudflare Access) |
 | Rede de casa | <http://192.168.1.10:631> (só consulta: fila e impressora) |
 | No próprio Pi | <http://localhost:631> |
 
 O acesso externo passa pelo Cloudflare Tunnel do Raspberry Pi
-(`impressora.rtavares.net` → `http://localhost:631`) e é protegido pelo
+(`impressora.tavares.nz` → `http://localhost:631`) e é protegido pelo
 Cloudflare Access. A rota do túnel precisa de **HTTP Host Header =
 `localhost:631`**: em conexões vindas do próprio Pi (que é de onde o
 `cloudflared` se conecta) o CUPS só aceita o nome `localhost` e responde
