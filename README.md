@@ -130,6 +130,13 @@ O tempo para desligar fica em `desligar_apos_min` no
 `~/.config/impressora-energia/config.json`. A Local Key muda se a tomada for
 removida e pareada de novo no app: aí rode o wizard e o `configurar` de novo.
 
+**Trocando a tomada:** pareie a nova no Smart Life (ela aparece no projeto
+Tuya sozinha), rode o wizard e o `configurar` de novo e dê a ela o IP fixo
+`10.10.0.174` no UniFi (tirando a reserva da antiga), assim a regra de
+firewall continua valendo. O `configurar` pede o IP quando não acha a tomada
+por broadcast (o que sempre acontece entre VLANs) e testa as versões 3.5,
+3.4 e 3.3 do protocolo até ela responder; se nenhuma responder, não salva.
+
 ```bash
 ~/impressora/.venv/bin/python ~/impressora/energia.py estado     # tomada e USB
 ~/impressora/.venv/bin/python ~/impressora/energia.py ligar      # ou desligar

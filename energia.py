@@ -130,6 +130,20 @@ def servico():
         time.sleep(INTERVALO)
 
 
+def detectar_versao(cfg, preferida=None):
+    """Testa as versões do protocolo até a tomada responder. A busca por
+    broadcast (find_device) não atravessa VLANs, então não dá para confiar
+    na versão que ela informa: a tomada fica na rede IoT."""
+    for v in dict.fromkeys(x for x in (preferida, 3.5, 3.4, 3.3) if x):
+        d = tomada({**cfg, "version": v})
+        d.set_socketRetryLimit(1)
+        r = d.status()
+        if r and "dps" in r:
+            return float(v)
+        print(f"  versão {v}: {r.get('Error') if r else 'sem resposta'}")
+    return None
+
+
 def configurar():
     devices = PASTA / "devices.json"
     if not devices.exists():
@@ -142,10 +156,14 @@ def configurar():
     print("Procurando a tomada na rede...")
     achado = tinytuya.find_device(d["id"]) or {}
     ip = achado.get("ip") or input("Não achei na rede. IP da tomada: ").strip()
-    version = achado.get("version") or d.get("version") or 3.3
-
     cfg = {"nome": d.get("name"), "id": d["id"], "key": d["key"], "ip": ip,
-           "version": float(version), "dps": 1, "desligar_apos_min": 10}
+           "dps": 1, "desligar_apos_min": 10}
+    print(f"Testando o protocolo em {ip}...")
+    version = detectar_versao(cfg, achado.get("version") or d.get("version"))
+    if version is None:
+        sys.exit("A tomada não respondeu em nenhuma versão: confira o IP e a regra de "
+                 "firewall do UniFi (Pi -> tomada, TCP 6668). Nada foi salvo.")
+    cfg["version"] = version
     if old := ler_config():
         cfg["desligar_apos_min"] = old.get("desligar_apos_min", 10)
     CONFIG.write_text(json.dumps(cfg, indent=2) + "\n")
