@@ -73,6 +73,17 @@ def impressora_na_usb():
     return False
 
 
+def reabilitar_fila():
+    """O udev-configure-printer desabilita a fila quando a impressora sai da
+    USB e não consegue reabilitar quando ela volta. Só reabilita se foi esse
+    o motivo: falta de papel e outros erros continuam parados."""
+    r = subprocess.run(["lpstat", "-p", FILA], capture_output=True, text=True,
+                       env={"LC_ALL": "C", "LANG": "C", "PATH": "/usr/bin:/bin"})
+    if "disabled" in r.stdout and "Unplugged or turned off" in r.stdout:
+        subprocess.run(["cupsenable", FILA])
+        log("Fila reabilitada.")
+
+
 def tem_trabalhos():
     r = subprocess.run(["lpstat", "-o", FILA], capture_output=True, text=True)
     return bool(r.stdout.strip())
@@ -100,6 +111,8 @@ def servico():
             estava_na_usb = na_usb
             if na_usb:
                 ultima_atividade = agora
+                time.sleep(3)  # deixa o udev terminar antes de mexer na fila
+                reabilitar_fila()
 
         if tem_trabalhos():
             ultima_atividade = agora

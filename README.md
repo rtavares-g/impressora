@@ -111,6 +111,20 @@ vez pela Tuya IoT Platform:
    Informações) e grava `devices.json` com as chaves. O `configurar` mostra a
    lista, você escolhe a tomada e ele salva `config.json` (fora do git).
 
+**Rede:** a tomada fica na VLAN IoT (`10.10.0.0/24`, isolada) com IP fixo
+`10.10.0.174`. No UniFi há uma regra *Pi -> tomada impressora (Tuya)*
+liberando só `192.168.1.10` → `10.10.0.174` TCP 6668 (com retorno), acima da
+"Isolated Networks". Como a busca por broadcast não atravessa VLANs, o IP
+fica fixo no `config.json`; se mudar, ajuste lá. A tomada (EKAZA 20A) usa o
+protocolo Tuya **3.5**.
+
+**Fila desabilitada:** quando a impressora sai da USB, o
+`udev-configure-printer` desabilita a fila ("Unplugged or turned off") e nem
+sempre reabilita quando ela volta. O serviço roda `cupsenable` quando ela
+reaparece, só se o motivo for esse (falta de papel continua parada). Não há
+limite de tempo para ela voltar: em dia frio pode demorar mais e o CUPS
+espera.
+
 O tempo para desligar fica em `desligar_apos_min` no
 `~/.config/impressora-energia/config.json`. A Local Key muda se a tomada for
 removida e pareada de novo no app: aí rode o wizard e o `configurar` de novo.
