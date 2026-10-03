@@ -82,7 +82,10 @@ A impressora fica numa tomada inteligente Tuya (app Smart Life). O serviço
 
 - **Chegou trabalho e a impressora não está na USB** → liga a tomada. O
   backend USB do CUPS fica em "Waiting for printer to become available" e
-  imprime assim que ela aparece.
+  manda o trabalho quando ela aparece. O tempo até ficar pronta varia: no
+  teste a USB voltou em uns 6 s, mas em dia frio o aquecimento demora mais.
+  O serviço não tem prazo: se a USB não aparecer em 30 s ele só manda
+  "ligar" de novo, e o CUPS continua esperando.
 - **Fila vazia há 10 min** (contados do último trabalho ou de quando a
   impressora apareceu na USB) → desliga a tomada. Se você ligar na mão para
   tirar cópia, ela também desliga depois de 10 min.
@@ -121,9 +124,7 @@ protocolo Tuya **3.5**.
 **Fila desabilitada:** quando a impressora sai da USB, o
 `udev-configure-printer` desabilita a fila ("Unplugged or turned off") e nem
 sempre reabilita quando ela volta. O serviço roda `cupsenable` quando ela
-reaparece, só se o motivo for esse (falta de papel continua parada). Não há
-limite de tempo para ela voltar: em dia frio pode demorar mais e o CUPS
-espera.
+reaparece, só se o motivo for esse (falta de papel continua parada).
 
 O tempo para desligar fica em `desligar_apos_min` no
 `~/.config/impressora-energia/config.json`. A Local Key muda se a tomada for
