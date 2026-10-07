@@ -195,8 +195,12 @@ function kb(bytes) {
 }
 
 let chaveDesenho = "";
-function desenhar(paginas, tamanhos = {}) {
-  const chave = paginas.map(p => p + ":" + (tamanhos[p] ?? "")).join();
+let versoes = {};
+const urlPagina = (arq) => `/api/pagina/${sessao}/${arq}?v=${versoes[arq] ?? ""}`;
+
+function desenhar(paginas, tamanhos = {}, novasVersoes = {}) {
+  versoes = novasVersoes;
+  const chave = paginas.map(p => p + ":" + (tamanhos[p] ?? "") + ":" + (versoes[p] ?? "")).join();
   const mudou = chave !== chaveDesenho;
   chaveDesenho = chave;
   lista = paginas;
@@ -212,7 +216,7 @@ function desenhar(paginas, tamanhos = {}) {
   caixa.replaceChildren(...lista.map((arq, i) => {
     const d = document.createElement("div");
     const img = new Image();
-    img.src = `/api/pagina/${sessao}/${arq}`;
+    img.src = urlPagina(arq);
     img.alt = `Página ${i + 1}`;
     img.loading = "lazy";
     img.onclick = () => visualizar(i);
@@ -220,7 +224,7 @@ function desenhar(paginas, tamanhos = {}) {
     n.className = "n"; n.textContent = i + 1;
     const x = document.createElement("button");
     x.textContent = "✕"; x.title = "Remover página"; x.setAttribute("aria-label", `Remover página ${i + 1}`);
-    x.onclick = async () => { const r = await api("/api/apagar", { pagina: arq }); desenhar(r.paginas, r.tamanhos); };
+    x.onclick = async () => { const r = await api("/api/apagar", { pagina: arq }); desenhar(r.paginas, r.tamanhos, r.versoes); };
     const tam = document.createElement("div");
     tam.className = "tam"; tam.textContent = tamanhos[arq] ? kb(tamanhos[arq]) : "";
     const caixaImg = document.createElement("div");
@@ -240,7 +244,7 @@ async function atualizar() {
   $("impressora").textContent = "Samsung SCX-4200 · " + (e.ligada ? "ligada" : "desligada (liga sozinha ao digitalizar)");
   emailOk = e.email_configurado;
   if (!emailOk) status($("status-envio"), "O envio por e-mail ainda não foi configurado no Raspberry Pi.", "erro");
-  desenhar(e.paginas, e.tamanhos);
+  desenhar(e.paginas, e.tamanhos, e.versoes);
   const ocupado = ["ligando", "digitalizando"].includes(e.fase);
   emAndamento = ocupado;
   $("digitalizar").disabled = ocupado || e.fase === "ocupado";
@@ -305,14 +309,14 @@ function nomeArquivo() {
 // Abre o PDF numa nova guia (o iPhone não baixa direto). O nome vai no fim do
 // caminho, que é o que o Safari mostra e usa ao salvar.
 $("baixar").onclick = () => {
-  window.open(`/api/pdf/${sessao}/${encodeURIComponent(nomeArquivo())}`, "_blank");
+  window.open(`/api/pdf/${sessao}/${encodeURIComponent(nomeArquivo())}?v=${Date.now()}`, "_blank");
 };
 
 let visorPos = 0;
 function visualizar(i) {
   if (!lista.length) return fecharVisor();
   visorPos = Math.max(0, Math.min(i, lista.length - 1));
-  $("visor-img").src = `/api/pagina/${sessao}/${lista[visorPos]}`;
+  $("visor-img").src = urlPagina(lista[visorPos]);
   $("visor-img").alt = `Página ${visorPos + 1}`;
   $("visor-n").textContent = `Página ${visorPos + 1} de ${lista.length}`;
   $("visor-ant").disabled = visorPos === 0;

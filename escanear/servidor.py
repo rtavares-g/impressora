@@ -109,6 +109,13 @@ def tamanhos(sessao):
     return {f: (p / f).stat().st_size for f in paginas(sessao)}
 
 
+def versoes(sessao):
+    """Muda quando a página é refeita: depois de "Novo documento" a numeração
+    recomeça em 001.jpg, e sem isso o navegador mostra a imagem antiga."""
+    p = pasta_sessao(sessao)
+    return {f: (p / f).stat().st_mtime_ns // 1_000_000 for f in paginas(sessao)}
+
+
 def limpar_antigas():
     if not CACHE.is_dir():
         return
@@ -270,6 +277,7 @@ class Painel(BaseHTTPRequestHandler):
                 "msg": t["msg"] if meu else "",
                 "paginas": paginas(sessao),
                 "tamanhos": tamanhos(sessao),
+                "versoes": versoes(sessao),
                 "ligada": impressora_na_usb(),
                 "email_configurado": SMTP_CONFIG.exists(),
             })
@@ -330,7 +338,8 @@ class Painel(BaseHTTPRequestHandler):
             f = pasta_sessao(sessao) / arquivo
             if ARQUIVO_RE.match(arquivo) and f.is_file():
                 f.unlink()
-            self.responder(HTTPStatus.OK, {"paginas": paginas(sessao), "tamanhos": tamanhos(sessao)})
+            self.responder(HTTPStatus.OK, {"paginas": paginas(sessao), "tamanhos": tamanhos(sessao),
+                                             "versoes": versoes(sessao)})
 
         elif caminho == "/api/limpar":
             shutil.rmtree(pasta_sessao(sessao), ignore_errors=True)
