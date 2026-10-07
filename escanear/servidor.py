@@ -291,7 +291,7 @@ class Painel(BaseHTTPRequestHandler):
 
         if caminho == "/api/digitalizar":
             modo = dados.get("modo", "cinza")
-            resolucao = int(dados.get("resolucao", 150))
+            resolucao = int(dados.get("resolucao", 300))
             if modo not in MODOS or resolucao not in RESOLUCOES:
                 return self.erro(HTTPStatus.BAD_REQUEST, "Modo ou resolução inválidos.")
             if len(paginas(sessao)) >= MAX_PAGINAS:
