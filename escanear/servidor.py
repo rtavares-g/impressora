@@ -286,8 +286,10 @@ class Painel(BaseHTTPRequestHandler):
             if not pdf:
                 return self.erro(HTTPStatus.NOT_FOUND, "Nenhuma página digitalizada.")
             nome = nome_arquivo(nome)
+            # Abre na guia (inline); ?baixar=1 pede para baixar.
+            modo = "attachment" if q.get("baixar") else "inline"
             self.responder(HTTPStatus.OK, pdf, "application/pdf",
-                           {"Content-Disposition": f"attachment; filename=\"{nome_ascii(nome)}\"; "
+                           {"Content-Disposition": f"{modo}; filename=\"{nome_ascii(nome)}\"; "
                                                    f"filename*=UTF-8''{quote(nome)}"})
         else:
             self.erro(HTTPStatus.NOT_FOUND, "Não encontrado.")

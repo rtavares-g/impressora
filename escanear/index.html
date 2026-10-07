@@ -57,7 +57,21 @@
   @keyframes g { to { transform: rotate(360deg); } }
   .paginas { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
   .pagina { position: relative; border: 1px solid var(--borda); border-radius: 8px; overflow: hidden; background: #fff; }
-  .pagina img { display: block; width: 100%; aspect-ratio: 210 / 297; object-fit: cover; }
+  .pagina img { display: block; width: 100%; aspect-ratio: 210 / 297; object-fit: cover; cursor: zoom-in; }
+  .visor { position: fixed; inset: 0; z-index: 10; background: rgba(10,10,12,.92);
+           display: flex; flex-direction: column; }
+  .visor[hidden] { display: none; }
+  .visor .topo { display: flex; align-items: center; justify-content: space-between;
+                 padding: 10px 16px; color: #fff; font-size: .95rem; }
+  .visor .topo button { background: rgba(255,255,255,.14); color: #fff; padding: 8px 14px; }
+  .visor .area { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center;
+                 padding: 0 16px 16px; position: relative; }
+  .visor .area img { max-width: 100%; max-height: 100%; object-fit: contain; background: #fff;
+                     border-radius: 4px; box-shadow: 0 4px 30px rgba(0,0,0,.5); }
+  .visor .seta { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px;
+                 padding: 0; border-radius: 50%; background: rgba(255,255,255,.18); color: #fff; font-size: 1.4rem; }
+  .visor .seta.esq { left: 10px; } .visor .seta.dir { right: 10px; }
+  .visor .seta:disabled { opacity: .25; }
   .pagina .n { position: absolute; left: 6px; bottom: 6px; background: rgba(0,0,0,.6); color: #fff;
                font-size: .75rem; padding: 1px 7px; border-radius: 99px; }
   .pagina button { position: absolute; top: 6px; right: 6px; padding: 2px 9px; font-size: .9rem;
@@ -113,11 +127,11 @@
   </section>
 
   <section>
-    <h2>2. Baixar ou enviar o PDF</h2>
+    <h2>2. Abrir ou enviar o PDF</h2>
     <label class="campo" for="nome">Nome do arquivo (opcional)</label>
     <input type="text" id="nome" placeholder="Digitalização" maxlength="80">
     <div class="acoes">
-      <button id="baixar" disabled>Baixar PDF</button>
+      <button id="baixar" disabled>Abrir PDF</button>
       <button class="sec" id="limpar" disabled>Novo documento</button>
     </div>
     <hr>
@@ -130,6 +144,17 @@
     <div class="status" id="status-envio" aria-live="polite"></div>
   </section>
 </main>
+<div class="visor" id="visor" hidden role="dialog" aria-modal="true" aria-label="Visualizar página">
+  <div class="topo">
+    <span id="visor-n"></span>
+    <button type="button" id="visor-fechar">Fechar</button>
+  </div>
+  <div class="area">
+    <img id="visor-img" alt="">
+    <button type="button" class="seta esq" id="visor-ant" aria-label="Página anterior">‹</button>
+    <button type="button" class="seta dir" id="visor-prox" aria-label="Próxima página">›</button>
+  </div>
+</div>
 <script>
 const $ = (id) => document.getElementById(id);
 const guardar = {
@@ -143,6 +168,7 @@ if (!sessao) {
 }
 let lista = [];
 let emAndamento = false;
+let aguardandoNova = false, tamanhoAntes = 0;
 let emailOk = true;
 
 function status(el, texto, tipo = "", rodando = false) {
@@ -170,7 +196,8 @@ function desenhar(paginas) {
   for (const id of ["baixar", "limpar", "enviar"]) $(id).disabled = !lista.length;
   if (!emailOk) $("enviar").disabled = true;
   if (!mudou) return;
-  prepararPdf();
+  if (aguardandoNova && lista.length > tamanhoAntes) { aguardandoNova = false; visualizar(lista.length - 1); }
+  else if (!$("visor").hidden) visualizar(visorPos);
   const caixa = $("paginas");
   caixa.replaceChildren(...lista.map((arq, i) => {
     const d = document.createElement("div");
@@ -179,6 +206,7 @@ function desenhar(paginas) {
     img.src = `/api/pagina/${sessao}/${arq}`;
     img.alt = `Página ${i + 1}`;
     img.loading = "lazy";
+    img.onclick = () => visualizar(i);
     const n = document.createElement("span");
     n.className = "n"; n.textContent = i + 1;
     const x = document.createElement("button");
@@ -203,7 +231,7 @@ async function atualizar() {
   $("digitalizar").disabled = ocupado || e.fase === "ocupado";
   if (ocupado) status($("status-scan"), e.msg, "", true);
   else if (e.fase === "ocupado") status($("status-scan"), "Outra pessoa está usando o scanner…", "", true);
-  else if (e.fase === "erro") status($("status-scan"), e.msg, "erro");
+  else if (e.fase === "erro") { aguardandoNova = false; status($("status-scan"), e.msg, "erro"); }
   else if (e.fase === "pronto") status($("status-scan"), e.msg + " Pode trocar a folha e digitalizar a próxima.", "ok");
   else status($("status-scan"), "");
   clearTimeout(atualizar.t);
@@ -215,8 +243,10 @@ $("digitalizar").onclick = async () => {
   const resolucao = +document.querySelector("input[name=res]:checked").value;
   guardar.gravar("escanear-opcoes", { modo, resolucao });
   $("digitalizar").disabled = true;
-  try { await api("/api/digitalizar", { modo, resolucao }); }
-  catch (err) { status($("status-scan"), err.message, "erro"); }
+  try {
+    await api("/api/digitalizar", { modo, resolucao });
+    aguardandoNova = true; tamanhoAntes = lista.length;
+  } catch (err) { status($("status-scan"), err.message, "erro"); }
   atualizar();
 };
 
@@ -257,48 +287,42 @@ function nomeArquivo() {
   return `Digitalizacao ${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}${z(d.getMinutes())}.pdf`;
 }
 
-// No iPhone/Android não há download direto confiável (o Safari abre o PDF em
-// outra guia), então o botão abre o menu de compartilhar ("Salvar em
-// Arquivos"). O share só funciona logo depois do toque, por isso o PDF fica
-// baixado de antemão sempre que as páginas mudam.
-const compartilhaArquivo = !!(navigator.canShare && navigator.canShare(
-  { files: [new File([""], "x.pdf", { type: "application/pdf" })] }));
-let pdfPronto = { chave: "", blob: null, carregando: null };
-
-function prepararPdf() {
-  const chave = lista.join();
-  if (!compartilhaArquivo || !lista.length || pdfPronto.chave === chave) return pdfPronto.carregando;
-  pdfPronto = { chave, blob: null, carregando: null };
-  pdfPronto.carregando = fetch(`/api/pdf/${sessao}/pdf.pdf`)
-    .then(r => r.ok ? r.blob() : Promise.reject(new Error(`Erro ${r.status}`)))
-    .then(blob => { if (pdfPronto.chave === chave) pdfPronto.blob = blob; return blob; })
-    .catch(err => { if (pdfPronto.chave === chave) pdfPronto.chave = ""; throw err; });
-  pdfPronto.carregando.catch(() => {});
-  return pdfPronto.carregando;
-}
-
-$("baixar").onclick = async () => {
-  const nome = nomeArquivo();
-  if (!compartilhaArquivo) {
-    const a = document.createElement("a");
-    a.href = `/api/pdf/${sessao}/${encodeURIComponent(nome)}`;
-    a.download = nome;
-    document.body.append(a); a.click(); a.remove();
-    return;
-  }
-  if (!pdfPronto.blob || pdfPronto.chave !== lista.join()) {
-    status($("status-envio"), "Preparando o PDF…", "", true);
-    try { await prepararPdf(); } catch (err) { status($("status-envio"), err.message, "erro"); return; }
-    status($("status-envio"), "PDF pronto: toque em “Baixar PDF” de novo para salvar.", "ok");
-    return;  // o toque já "expirou" durante a espera; o próximo abre o menu na hora
-  }
-  try {
-    await navigator.share({ files: [new File([pdfPronto.blob], nome, { type: "application/pdf" })] });
-    status($("status-envio"), "");
-  } catch (err) {
-    if (err.name !== "AbortError") status($("status-envio"), "Não foi possível abrir o menu: " + err.message, "erro");
-  }
+// Abre o PDF numa nova guia (o iPhone não baixa direto). O nome vai no fim do
+// caminho, que é o que o Safari mostra e usa ao salvar.
+$("baixar").onclick = () => {
+  window.open(`/api/pdf/${sessao}/${encodeURIComponent(nomeArquivo())}`, "_blank");
 };
+
+let visorPos = 0;
+function visualizar(i) {
+  if (!lista.length) return fecharVisor();
+  visorPos = Math.max(0, Math.min(i, lista.length - 1));
+  $("visor-img").src = `/api/pagina/${sessao}/${lista[visorPos]}`;
+  $("visor-img").alt = `Página ${visorPos + 1}`;
+  $("visor-n").textContent = `Página ${visorPos + 1} de ${lista.length}`;
+  $("visor-ant").disabled = visorPos === 0;
+  $("visor-prox").disabled = visorPos === lista.length - 1;
+  $("visor").hidden = false;
+}
+function fecharVisor() { $("visor").hidden = true; }
+$("visor-fechar").onclick = fecharVisor;
+$("visor-ant").onclick = () => visualizar(visorPos - 1);
+$("visor-prox").onclick = () => visualizar(visorPos + 1);
+$("visor").onclick = (e) => { if (e.target.classList.contains("area")) fecharVisor(); };
+document.addEventListener("keydown", (e) => {
+  if ($("visor").hidden) return;
+  if (e.key === "Escape") fecharVisor();
+  if (e.key === "ArrowLeft") visualizar(visorPos - 1);
+  if (e.key === "ArrowRight") visualizar(visorPos + 1);
+});
+let toqueX = null;
+$("visor").addEventListener("touchstart", (e) => { toqueX = e.touches[0].clientX; }, { passive: true });
+$("visor").addEventListener("touchend", (e) => {
+  if (toqueX === null) return;
+  const dx = e.changedTouches[0].clientX - toqueX;
+  toqueX = null;
+  if (Math.abs(dx) > 50) visualizar(visorPos + (dx < 0 ? 1 : -1));
+});
 
 $("limpar").onclick = async () => {
   if (!confirm("Apagar as páginas digitalizadas e começar um novo documento?")) return;

@@ -154,7 +154,10 @@ serviço `escanear` (`escanear/servidor.py`, só Python + Pillow) em
 - Escolha cor (cinza, colorido, P&B) e resolução (75, 100, 150, 200 ou 300 dpi; 600 trava o scanner) e toque
   em **Digitalizar página**. Para várias páginas, troque a folha e
   digitalize de novo; dá para remover uma página pelo ✕.
-- **Baixar PDF** junta as páginas num PDF só. **Novo documento** apaga as
+- Tocar numa miniatura abre a página em tela cheia (setas ou deslizar para
+  passar); depois de digitalizar, a página nova abre sozinha.
+- **Abrir PDF** junta as páginas num PDF só e abre numa nova guia (no
+  iPhone não há download direto; salve de lá). **Novo documento** apaga as
   páginas. Cada aba tem seu documento (em `~/.cache/escanear/`, apagado
   depois de 6 h).
 - **Enviar** manda o PDF por e-mail (até 5 endereços, separados por
