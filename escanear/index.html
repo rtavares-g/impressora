@@ -170,6 +170,7 @@ function desenhar(paginas) {
   for (const id of ["baixar", "limpar", "enviar"]) $(id).disabled = !lista.length;
   if (!emailOk) $("enviar").disabled = true;
   if (!mudou) return;
+  prepararPdf();
   const caixa = $("paginas");
   caixa.replaceChildren(...lista.map((arq, i) => {
     const d = document.createElement("div");
@@ -248,14 +249,55 @@ $("enviar").onclick = async () => {
   }
 };
 
-// Link de verdade até o PDF com o atributo download (vazio = usa o nome do
-// Content-Disposition). Navegar até o PDF abre a visualização no Safari do
-// iPhone, e baixar por blob abre outra guia; assim ele oferece o download.
-$("baixar").onclick = () => {
-  const a = document.createElement("a");
-  a.href = `/api/pdf?sessao=${sessao}&nome=${encodeURIComponent($("nome").value)}`;
-  a.download = "";
-  document.body.append(a); a.click(); a.remove();
+// Mesmo nome que o servidor dá (nome_arquivo em servidor.py).
+function nomeArquivo() {
+  const n = $("nome").value.replace(/[^\p{L}\p{N}_\- ]+/gu, "").trim();
+  if (n) return n + ".pdf";
+  const d = new Date(), z = (x) => String(x).padStart(2, "0");
+  return `Digitalizacao ${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}${z(d.getMinutes())}.pdf`;
+}
+
+// No iPhone/Android não há download direto confiável (o Safari abre o PDF em
+// outra guia), então o botão abre o menu de compartilhar ("Salvar em
+// Arquivos"). O share só funciona logo depois do toque, por isso o PDF fica
+// baixado de antemão sempre que as páginas mudam.
+const compartilhaArquivo = !!(navigator.canShare && navigator.canShare(
+  { files: [new File([""], "x.pdf", { type: "application/pdf" })] }));
+let pdfPronto = { chave: "", blob: null, carregando: null };
+
+function prepararPdf() {
+  const chave = lista.join();
+  if (!compartilhaArquivo || !lista.length || pdfPronto.chave === chave) return pdfPronto.carregando;
+  pdfPronto = { chave, blob: null, carregando: null };
+  pdfPronto.carregando = fetch(`/api/pdf/${sessao}/pdf.pdf`)
+    .then(r => r.ok ? r.blob() : Promise.reject(new Error(`Erro ${r.status}`)))
+    .then(blob => { if (pdfPronto.chave === chave) pdfPronto.blob = blob; return blob; })
+    .catch(err => { if (pdfPronto.chave === chave) pdfPronto.chave = ""; throw err; });
+  pdfPronto.carregando.catch(() => {});
+  return pdfPronto.carregando;
+}
+
+$("baixar").onclick = async () => {
+  const nome = nomeArquivo();
+  if (!compartilhaArquivo) {
+    const a = document.createElement("a");
+    a.href = `/api/pdf/${sessao}/${encodeURIComponent(nome)}`;
+    a.download = nome;
+    document.body.append(a); a.click(); a.remove();
+    return;
+  }
+  if (!pdfPronto.blob || pdfPronto.chave !== lista.join()) {
+    status($("status-envio"), "Preparando o PDF…", "", true);
+    try { await prepararPdf(); } catch (err) { status($("status-envio"), err.message, "erro"); return; }
+    status($("status-envio"), "PDF pronto: toque em “Baixar PDF” de novo para salvar.", "ok");
+    return;  // o toque já "expirou" durante a espera; o próximo abre o menu na hora
+  }
+  try {
+    await navigator.share({ files: [new File([pdfPronto.blob], nome, { type: "application/pdf" })] });
+    status($("status-envio"), "");
+  } catch (err) {
+    if (err.name !== "AbortError") status($("status-envio"), "Não foi possível abrir o menu: " + err.message, "erro");
+  }
 };
 
 $("limpar").onclick = async () => {

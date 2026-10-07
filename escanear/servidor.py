@@ -26,7 +26,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from io import BytesIO
 from pathlib import Path
-from urllib.parse import parse_qs, quote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from PIL import Image
 
@@ -273,14 +273,19 @@ class Painel(BaseHTTPRequestHandler):
             if not ARQUIVO_RE.match(arquivo) or not f.is_file():
                 return self.erro(HTTPStatus.NOT_FOUND, "Página não encontrada.")
             self.responder(HTTPStatus.OK, f.read_bytes(), "image/jpeg")
-        elif url.path == "/api/pdf":
-            sessao = q.get("sessao")
+        elif url.path == "/api/pdf" or (len(partes) == 4 and partes[:2] == ["api", "pdf"]):
+            # /api/pdf/<sessão>/<nome>.pdf: o nome no fim do caminho é o que o
+            # Safari do iPhone usa quando ignora o Content-Disposition.
+            if len(partes) == 4:
+                sessao, nome = partes[2], unquote(partes[3]).removesuffix(".pdf")
+            else:
+                sessao, nome = q.get("sessao"), q.get("nome")
             if not self.sessao_valida(sessao):
                 return
             pdf = montar_pdf(sessao)
             if not pdf:
                 return self.erro(HTTPStatus.NOT_FOUND, "Nenhuma página digitalizada.")
-            nome = nome_arquivo(q.get("nome"))
+            nome = nome_arquivo(nome)
             self.responder(HTTPStatus.OK, pdf, "application/pdf",
                            {"Content-Disposition": f"attachment; filename=\"{nome_ascii(nome)}\"; "
                                                    f"filename*=UTF-8''{quote(nome)}"})
