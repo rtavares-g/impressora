@@ -57,6 +57,8 @@
   @keyframes g { to { transform: rotate(360deg); } }
   .paginas { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
   .pagina { position: relative; border: 1px solid var(--borda); border-radius: 8px; overflow: hidden; background: #fff; }
+  .item .tam { text-align: center; font-size: .82rem; color: var(--suave); margin-top: 5px;
+               font-variant-numeric: tabular-nums; }
   .pagina img { display: block; width: 100%; aspect-ratio: 210 / 297; object-fit: cover; cursor: zoom-in; }
   .visor { position: fixed; inset: 0; z-index: 10; background: rgba(10,10,12,.92);
            display: flex; flex-direction: column; }
@@ -188,10 +190,18 @@ async function api(caminho, corpo) {
   return dados;
 }
 
-function desenhar(paginas) {
-  const mudou = paginas.join() !== lista.join();
+function kb(bytes) {
+  return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB` : `${Math.round(bytes / 1024)} KB`;
+}
+
+let chaveDesenho = "";
+function desenhar(paginas, tamanhos = {}) {
+  const chave = paginas.map(p => p + ":" + (tamanhos[p] ?? "")).join();
+  const mudou = chave !== chaveDesenho;
+  chaveDesenho = chave;
   lista = paginas;
-  $("contagem").textContent = lista.length ? `(${lista.length})` : "";
+  const total = paginas.reduce((t, p) => t + (tamanhos[p] || 0), 0);
+  $("contagem").textContent = lista.length ? `(${lista.length}${total ? " · PDF ≈ " + kb(total) : ""})` : "";
   $("vazio").hidden = lista.length > 0;
   for (const id of ["baixar", "limpar", "enviar"]) $(id).disabled = !lista.length;
   if (!emailOk) $("enviar").disabled = true;
@@ -201,7 +211,6 @@ function desenhar(paginas) {
   const caixa = $("paginas");
   caixa.replaceChildren(...lista.map((arq, i) => {
     const d = document.createElement("div");
-    d.className = "pagina";
     const img = new Image();
     img.src = `/api/pagina/${sessao}/${arq}`;
     img.alt = `Página ${i + 1}`;
@@ -211,8 +220,14 @@ function desenhar(paginas) {
     n.className = "n"; n.textContent = i + 1;
     const x = document.createElement("button");
     x.textContent = "✕"; x.title = "Remover página"; x.setAttribute("aria-label", `Remover página ${i + 1}`);
-    x.onclick = async () => desenhar((await api("/api/apagar", { pagina: arq })).paginas);
-    d.append(img, n, x);
+    x.onclick = async () => { const r = await api("/api/apagar", { pagina: arq }); desenhar(r.paginas, r.tamanhos); };
+    const tam = document.createElement("div");
+    tam.className = "tam"; tam.textContent = tamanhos[arq] ? kb(tamanhos[arq]) : "";
+    const caixaImg = document.createElement("div");
+    caixaImg.className = "pagina";
+    caixaImg.append(img, n, x);
+    d.className = "item";
+    d.append(caixaImg, tam);
     return d;
   }));
 }
@@ -225,7 +240,7 @@ async function atualizar() {
   $("impressora").textContent = "Samsung SCX-4200 · " + (e.ligada ? "ligada" : "desligada (liga sozinha ao digitalizar)");
   emailOk = e.email_configurado;
   if (!emailOk) status($("status-envio"), "O envio por e-mail ainda não foi configurado no Raspberry Pi.", "erro");
-  desenhar(e.paginas);
+  desenhar(e.paginas, e.tamanhos);
   const ocupado = ["ligando", "digitalizando"].includes(e.fase);
   emAndamento = ocupado;
   $("digitalizar").disabled = ocupado || e.fase === "ocupado";

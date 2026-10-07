@@ -102,6 +102,13 @@ def paginas(sessao):
     return sorted(f.name for f in p.glob("*.jpg")) if p.is_dir() else []
 
 
+def tamanhos(sessao):
+    """Bytes de cada página; o PDF embute o JPEG como está, então a soma é
+    praticamente o tamanho do PDF."""
+    p = pasta_sessao(sessao)
+    return {f: (p / f).stat().st_size for f in paginas(sessao)}
+
+
 def limpar_antigas():
     if not CACHE.is_dir():
         return
@@ -262,6 +269,7 @@ class Painel(BaseHTTPRequestHandler):
                 "fase": t["fase"] if meu else ("ocupado" if scanner.locked() else "parado"),
                 "msg": t["msg"] if meu else "",
                 "paginas": paginas(sessao),
+                "tamanhos": tamanhos(sessao),
                 "ligada": impressora_na_usb(),
                 "email_configurado": SMTP_CONFIG.exists(),
             })
@@ -322,7 +330,7 @@ class Painel(BaseHTTPRequestHandler):
             f = pasta_sessao(sessao) / arquivo
             if ARQUIVO_RE.match(arquivo) and f.is_file():
                 f.unlink()
-            self.responder(HTTPStatus.OK, {"paginas": paginas(sessao)})
+            self.responder(HTTPStatus.OK, {"paginas": paginas(sessao), "tamanhos": tamanhos(sessao)})
 
         elif caminho == "/api/limpar":
             shutil.rmtree(pasta_sessao(sessao), ignore_errors=True)
