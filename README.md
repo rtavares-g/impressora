@@ -183,7 +183,10 @@ personalizado do iCloud Mail). Crie uma senha de app em
 ```
 
 O remetente precisa ser um endereço da conta (o próprio iCloud ou um do
-domínio personalizado). Não precisa reiniciar o serviço.
+domínio personalizado), escrito exatamente como foi criado, senão o iCloud
+responde `550 From address is not one of your addresses`. O login é sempre o
+Apple ID: entrar com o endereço do domínio dá `535 authentication failed`.
+Não precisa reiniciar o serviço.
 
 ```bash
 scanimage -L                     # o scanner aparece como xerox_mfp
