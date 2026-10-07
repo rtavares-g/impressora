@@ -19,6 +19,7 @@ import subprocess
 import sys
 import threading
 import time
+import unicodedata
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 from http import HTTPStatus
@@ -202,6 +203,11 @@ def enviar_email(destinatarios, assunto, nome, pdf):
         conexao.send_message(msg)
 
 
+def nome_ascii(nome):
+    """Nome sem acentos para o filename= simples (alguns navegadores ignoram o filename*)."""
+    return unicodedata.normalize("NFKD", nome).encode("ascii", "ignore").decode().replace('"', "")
+
+
 class Painel(BaseHTTPRequestHandler):
     server_version = "escanear"
 
@@ -276,7 +282,8 @@ class Painel(BaseHTTPRequestHandler):
                 return self.erro(HTTPStatus.NOT_FOUND, "Nenhuma página digitalizada.")
             nome = nome_arquivo(q.get("nome"))
             self.responder(HTTPStatus.OK, pdf, "application/pdf",
-                           {"Content-Disposition": f"attachment; filename*=UTF-8''{quote(nome)}"})
+                           {"Content-Disposition": f"attachment; filename=\"{nome_ascii(nome)}\"; "
+                                                   f"filename*=UTF-8''{quote(nome)}"})
         else:
             self.erro(HTTPStatus.NOT_FOUND, "Não encontrado.")
 

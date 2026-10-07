@@ -248,8 +248,28 @@ $("enviar").onclick = async () => {
   }
 };
 
-$("baixar").onclick = () => {
-  location.href = `/api/pdf?sessao=${sessao}&nome=${encodeURIComponent($("nome").value)}`;
+// Baixa como arquivo (blob + <a download>) em vez de navegar até o PDF: assim
+// o Safari do iPhone oferece salvar em vez de abrir a visualização.
+$("baixar").onclick = async () => {
+  $("baixar").disabled = true;
+  status($("status-envio"), "Gerando o PDF…", "", true);
+  try {
+    const r = await fetch(`/api/pdf?sessao=${sessao}&nome=${encodeURIComponent($("nome").value)}`);
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erro || `Erro ${r.status}`);
+    const disp = r.headers.get("Content-Disposition") || "";
+    const m = disp.match(/filename\*=UTF-8''([^;]+)/);
+    const nome = m ? decodeURIComponent(m[1]) : "Digitalizacao.pdf";
+    const url = URL.createObjectURL(new File([await r.blob()], nome, { type: "application/pdf" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = nome;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    status($("status-envio"), `PDF “${nome}” baixado.`, "ok");
+  } catch (err) {
+    status($("status-envio"), err.message, "erro");
+  } finally {
+    $("baixar").disabled = !lista.length;
+  }
 };
 
 $("limpar").onclick = async () => {
