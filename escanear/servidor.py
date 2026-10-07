@@ -39,7 +39,7 @@ ESPERA_LIGAR = 120         # segundos esperando a impressora aparecer na USB
 VALIDADE_SESSAO = 6 * 3600
 MAX_PAGINAS = 40
 MAX_DESTINATARIOS = 5
-RESOLUCOES = (150, 300)
+RESOLUCOES = (75, 100, 150, 200, 300)  # 600 dá "Error during device I/O" e trava o scanner
 MODOS = {"cinza": "Gray", "cor": "Color", "pb": "Lineart"}
 
 SESSAO_RE = re.compile(r"^[a-f0-9]{16,64}$")

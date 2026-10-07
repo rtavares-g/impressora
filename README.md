@@ -151,7 +151,7 @@ mandar por e-mail para outra pessoa):
 serviço `escanear` (`escanear/servidor.py`, só Python + Pillow) em
 `http://localhost:8082`.
 
-- Escolha cor (cinza, colorido, P&B) e qualidade (150 ou 300 dpi) e toque
+- Escolha cor (cinza, colorido, P&B) e resolução (75, 100, 150, 200 ou 300 dpi; 600 trava o scanner) e toque
   em **Digitalizar página**. Para várias páginas, troque a folha e
   digitalize de novo; dá para remover uma página pelo ✕.
 - **Baixar PDF** junta as páginas num PDF só. **Novo documento** apaga as
