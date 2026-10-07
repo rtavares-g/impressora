@@ -6,9 +6,9 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=__USER__
-WorkingDirectory=__HOME__/impressora
+WorkingDirectory=__DIR__
 Environment=PYTHONUNBUFFERED=1
-ExecStart=__HOME__/impressora/.venv/bin/python __HOME__/impressora/energia.py
+ExecStart=__DIR__/.venv/bin/python __DIR__/energia.py
 Restart=always
 RestartSec=10
 

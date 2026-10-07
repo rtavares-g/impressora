@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escanear</title>
+<meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#18191b" media="(prefers-color-scheme: dark)">
+<style>
+  :root {
+    --bg: #f6f5f2; --card: #ffffff; --texto: #1d1e20; --suave: #6b6d72;
+    --borda: #e2e0db; --acento: #2f6fd6; --acento-texto: #fff;
+    --erro: #c4372f; --ok: #237a4b; --campo: #fbfbfa;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #18191b; --card: #232427; --texto: #ecebe8; --suave: #9c9ea3;
+      --borda: #36383c; --acento: #5b93ec; --acento-texto: #0d1420;
+      --erro: #f0766d; --ok: #5fc58e; --campo: #1c1d20;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--texto);
+    font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 640px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--suave); margin: 0 0 20px; font-size: .95rem; }
+  .sub b { font-weight: 600; }
+  .ponto { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+           background: var(--suave); margin-right: 6px; vertical-align: 1px; }
+  .ponto.on { background: var(--ok); }
+  section { background: var(--card); border: 1px solid var(--borda);
+            border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+  h2 { font-size: 1rem; margin: 0 0 12px; }
+  .linha { display: flex; gap: 10px; flex-wrap: wrap; }
+  .grupo { display: flex; border: 1px solid var(--borda); border-radius: 10px; overflow: hidden; }
+  .grupo label { position: relative; }
+  .grupo input { position: absolute; opacity: 0; }
+  .grupo span { display: block; padding: 8px 14px; cursor: pointer; font-size: .92rem; color: var(--suave); }
+  .grupo input:checked + span { background: var(--acento); color: var(--acento-texto); }
+  .grupo input:focus-visible + span { outline: 2px solid var(--acento); outline-offset: -2px; }
+  button {
+    font: inherit; border: 0; border-radius: 10px; padding: 12px 18px; cursor: pointer;
+    background: var(--acento); color: var(--acento-texto); font-weight: 600;
+  }
+  button.sec { background: transparent; color: var(--texto); border: 1px solid var(--borda); font-weight: 500; }
+  button:disabled { opacity: .5; cursor: default; }
+  .largo { width: 100%; margin-top: 14px; }
+  .status { margin-top: 12px; font-size: .93rem; color: var(--suave); min-height: 1.4em; }
+  .status.erro { color: var(--erro); }
+  .status.ok { color: var(--ok); }
+  .roda { display: inline-block; width: 14px; height: 14px; border: 2px solid currentColor;
+          border-right-color: transparent; border-radius: 50%; vertical-align: -2px;
+          margin-right: 6px; animation: g 0.8s linear infinite; }
+  @keyframes g { to { transform: rotate(360deg); } }
+  .paginas { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
+  .pagina { position: relative; border: 1px solid var(--borda); border-radius: 8px; overflow: hidden; background: #fff; }
+  .pagina img { display: block; width: 100%; aspect-ratio: 210 / 297; object-fit: cover; }
+  .pagina .n { position: absolute; left: 6px; bottom: 6px; background: rgba(0,0,0,.6); color: #fff;
+               font-size: .75rem; padding: 1px 7px; border-radius: 99px; }
+  .pagina button { position: absolute; top: 6px; right: 6px; padding: 2px 9px; font-size: .9rem;
+                   background: rgba(0,0,0,.6); color: #fff; border-radius: 99px; }
+  .vazio { color: var(--suave); font-size: .93rem; margin: 0; }
+  label.campo { display: block; font-size: .88rem; color: var(--suave); margin: 0 0 6px; }
+  input[type=text] {
+    width: 100%; font: inherit; padding: 11px 12px; border-radius: 10px;
+    border: 1px solid var(--borda); background: var(--campo); color: var(--texto); margin-bottom: 14px;
+  }
+  input:focus { outline: 2px solid var(--acento); outline-offset: -1px; border-color: transparent; }
+  .acoes { display: flex; gap: 10px; flex-wrap: wrap; }
+  .acoes button { flex: 1 1 160px; }
+  a { color: var(--acento); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Escanear</h1>
+  <p class="sub"><span class="ponto" id="ponto"></span><span id="impressora">Samsung SCX-4200</span></p>
+
+  <section>
+    <h2>1. Coloque o documento no vidro e digitalize</h2>
+    <div class="linha">
+      <div class="grupo" role="radiogroup" aria-label="Cor">
+        <label><input type="radio" name="modo" value="cinza" checked><span>Cinza</span></label>
+        <label><input type="radio" name="modo" value="cor"><span>Colorido</span></label>
+        <label><input type="radio" name="modo" value="pb"><span>P&amp;B</span></label>
+      </div>
+      <div class="grupo" role="radiogroup" aria-label="Qualidade">
+        <label><input type="radio" name="res" value="150" checked><span>Normal</span></label>
+        <label><input type="radio" name="res" value="300"><span>Alta</span></label>
+      </div>
+    </div>
+    <button class="largo" id="digitalizar">Digitalizar página</button>
+    <div class="status" id="status-scan" aria-live="polite"></div>
+  </section>
+
+  <section>
+    <h2>Páginas <span id="contagem" style="color:var(--suave);font-weight:400"></span></h2>
+    <div class="paginas" id="paginas"></div>
+    <p class="vazio" id="vazio">Nenhuma página ainda. Para várias páginas, troque a folha e digitalize de novo.</p>
+  </section>
+
+  <section>
+    <h2>2. Baixar o PDF</h2>
+    <label class="campo" for="nome">Nome do arquivo (opcional)</label>
+    <input type="text" id="nome" placeholder="Digitalização" maxlength="80">
+    <div class="acoes">
+      <button id="baixar" disabled>Baixar PDF</button>
+      <button class="sec" id="limpar" disabled>Novo documento</button>
+    </div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const guardar = {
+  ler(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+  gravar(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+let sessao = guardar.ler("escanear-sessao", null);
+if (!sessao) {
+  sessao = [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, "0")).join("");
+  guardar.gravar("escanear-sessao", sessao);
+}
+let lista = [];
+let emAndamento = false;
+
+function status(el, texto, tipo = "", rodando = false) {
+  el.className = "status " + tipo;
+  el.innerHTML = (rodando ? '<span class="roda"></span>' : "");
+  el.append(document.createTextNode(texto));
+}
+
+async function api(caminho, corpo) {
+  const r = await fetch(caminho, corpo === undefined ? {} : {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessao, ...corpo }),
+  });
+  let dados = {};
+  try { dados = await r.json(); } catch {}
+  if (!r.ok) throw new Error(dados.erro || `Erro ${r.status}`);
+  return dados;
+}
+
+function desenhar(paginas) {
+  const mudou = paginas.join() !== lista.join();
+  lista = paginas;
+  $("contagem").textContent = lista.length ? `(${lista.length})` : "";
+  $("vazio").hidden = lista.length > 0;
+  for (const id of ["baixar", "limpar"]) $(id).disabled = !lista.length;
+  if (!mudou) return;
+  const caixa = $("paginas");
+  caixa.replaceChildren(...lista.map((arq, i) => {
+    const d = document.createElement("div");
+    d.className = "pagina";
+    const img = new Image();
+    img.src = `/api/pagina/${sessao}/${arq}`;
+    img.alt = `Página ${i + 1}`;
+    img.loading = "lazy";
+    const n = document.createElement("span");
+    n.className = "n"; n.textContent = i + 1;
+    const x = document.createElement("button");
+    x.textContent = "✕"; x.title = "Remover página"; x.setAttribute("aria-label", `Remover página ${i + 1}`);
+    x.onclick = async () => desenhar((await api("/api/apagar", { pagina: arq })).paginas);
+    d.append(img, n, x);
+    return d;
+  }));
+}
+
+async function atualizar() {
+  let e;
+  try { e = await api(`/api/estado?sessao=${sessao}`); }
+  catch (err) { status($("status-scan"), "Sem conexão com o Raspberry Pi.", "erro"); return; }
+  $("ponto").classList.toggle("on", e.ligada);
+  $("impressora").textContent = "Samsung SCX-4200 · " + (e.ligada ? "ligada" : "desligada (liga sozinha ao digitalizar)");
+  desenhar(e.paginas);
+  const ocupado = ["ligando", "digitalizando"].includes(e.fase);
+  emAndamento = ocupado;
+  $("digitalizar").disabled = ocupado || e.fase === "ocupado";
+  if (ocupado) status($("status-scan"), e.msg, "", true);
+  else if (e.fase === "ocupado") status($("status-scan"), "Outra pessoa está usando o scanner…", "", true);
+  else if (e.fase === "erro") status($("status-scan"), e.msg, "erro");
+  else if (e.fase === "pronto") status($("status-scan"), e.msg + " Pode trocar a folha e digitalizar a próxima.", "ok");
+  else status($("status-scan"), "");
+  clearTimeout(atualizar.t);
+  atualizar.t = setTimeout(atualizar, ocupado || e.fase === "ocupado" ? 1000 : 5000);
+}
+
+$("digitalizar").onclick = async () => {
+  const modo = document.querySelector("input[name=modo]:checked").value;
+  const resolucao = +document.querySelector("input[name=res]:checked").value;
+  guardar.gravar("escanear-opcoes", { modo, resolucao });
+  $("digitalizar").disabled = true;
+  try { await api("/api/digitalizar", { modo, resolucao }); }
+  catch (err) { status($("status-scan"), err.message, "erro"); }
+  atualizar();
+};
+
+$("baixar").onclick = () => {
+  location.href = `/api/pdf?sessao=${sessao}&nome=${encodeURIComponent($("nome").value)}`;
+};
+
+$("limpar").onclick = async () => {
+  if (!confirm("Apagar as páginas digitalizadas e começar um novo documento?")) return;
+  desenhar((await api("/api/limpar", {})).paginas);
+  $("nome").value = "";
+  atualizar();
+};
+
+const op = guardar.ler("escanear-opcoes", null);
+if (op) {
+  const m = document.querySelector(`input[name=modo][value="${op.modo}"]`);
+  const r = document.querySelector(`input[name=res][value="${op.resolucao}"]`);
+  if (m) m.checked = true;
+  if (r) r.checked = true;
+}
+atualizar();
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Liga a tomada Tuya da impressora quando chega trabalho no CUPS e desliga
-depois de um tempo sem trabalhos.
+"""Liga a tomada Tuya da impressora quando chega trabalho no CUPS (ou o painel
+de digitalização pede) e desliga depois de um tempo sem uso.
 
 Uso:
   energia.py               serviço (roda em loop)
@@ -19,8 +19,10 @@ FILA = "Samsung_SCX4200"
 USB_ID = ("04e8", "341b")  # Samsung SCX-4200
 PASTA = Path.home() / ".config" / "impressora-energia"
 CONFIG = PASTA / "config.json"
+EM_USO = PASTA / "em-uso"  # o painel escanear/ toca enquanto usa o scanner
 INTERVALO = 3          # segundos entre verificações da fila
 RETENTAR_LIGAR = 30    # segundos até tentar ligar de novo se a USB não aparecer
+USO_RECENTE = 15       # segundos em que um toque em EM_USO conta como trabalho
 
 
 def log(msg):
@@ -89,6 +91,13 @@ def tem_trabalhos():
     return bool(r.stdout.strip())
 
 
+def scanner_em_uso():
+    try:
+        return time.time() - EM_USO.stat().st_mtime < USO_RECENTE
+    except OSError:
+        return False
+
+
 def servico():
     cfg = None
     while cfg is None:
@@ -114,10 +123,10 @@ def servico():
                 time.sleep(3)  # deixa o udev terminar antes de mexer na fila
                 reabilitar_fila()
 
-        if tem_trabalhos():
+        if tem_trabalhos() or scanner_em_uso():
             ultima_atividade = agora
             if not na_usb and agora - ultima_tentativa_ligar > RETENTAR_LIGAR:
-                log("Trabalho na fila e impressora desligada: ligando a tomada.")
+                log("Trabalho na fila ou scanner em uso e impressora desligada: ligando a tomada.")
                 comandar(cfg, True)
                 ultima_tentativa_ligar = agora
         elif na_usb and agora - ultima_atividade > desligar_apos:

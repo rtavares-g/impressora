@@ -1,0 +1,16 @@
+[Unit]
+Description=Painel de digitalização da impressora (escanear.tavares.nz)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__DIR__/escanear
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 __DIR__/escanear/servidor.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

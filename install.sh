@@ -13,14 +13,24 @@ sudo apt-get update
 sudo apt-get install -y cups cups-filters printer-driver-splix avahi-daemon
 sudo usermod -aG lpadmin "$USER"
 
+# Cada cupsctl faz o CUPS reiniciar; o seguinte falha com "Host está
+# desligado" se rodar antes de ele voltar, então espera o agendador responder.
+cupsctl_esperando() {
+    for _ in $(seq 15); do
+        sudo cupsctl "$@" 2>/dev/null && return
+        sleep 2
+    done
+    sudo cupsctl "$@"
+}
+
 echo "==> Liberando o compartilhamento só na rede local (sem administração remota)"
-sudo cupsctl --share-printers --no-remote-admin --no-remote-any
+cupsctl_esperando --share-printers --no-remote-admin --no-remote-any
 
 echo "==> Ligando o painel web, com administração sem senha só a partir do próprio Pi"
 # Pelo Cloudflare Tunnel (já protegido pelo Access) o CUPS vê a conexão como
 # localhost; pela rede de casa /admin e as operações de administração seguem
 # bloqueadas. Pode rodar de novo: só troca o que ainda estiver no padrão.
-sudo cupsctl WebInterface=yes
+cupsctl_esperando WebInterface=yes
 sudo python3 - /etc/cups/cupsd.conf <<'EOF'
 import re, sys
 p = sys.argv[1]
@@ -75,10 +85,21 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 python3 -m venv --system-site-packages "$DIR/.venv"
 "$DIR/.venv/bin/pip" install --quiet --upgrade tinytuya
 mkdir -p "$HOME/.config/impressora-energia"
-sed -e "s|__USER__|$USER|g" -e "s|__HOME__|$HOME|g" "$DIR/impressora-energia.service" \
+sed -e "s|__USER__|$USER|g" -e "s|__DIR__|$DIR|g" "$DIR/impressora-energia.service" \
     | sudo tee /etc/systemd/system/impressora-energia.service > /dev/null
 sudo systemctl daemon-reload
 sudo systemctl enable --now impressora-energia
 if [ ! -f "$HOME/.config/impressora-energia/config.json" ]; then
     echo "    Falta configurar a tomada: veja \"Tomada Tuya\" no README."
+fi
+
+echo "==> Painel de digitalização (escanear.tavares.nz -> http://localhost:8082)"
+sudo apt-get install -y sane-utils python3-pil
+sed -e "s|__USER__|$USER|g" -e "s|__DIR__|$DIR|g" "$DIR/escanear.service" \
+    | sudo tee /etc/systemd/system/escanear.service > /dev/null
+sudo systemctl daemon-reload
+sudo systemctl enable escanear
+sudo systemctl restart escanear impressora-energia
+if [ ! -f "$HOME/.config/escanear/smtp.json" ]; then
+    echo "    Falta configurar o envio de e-mail: veja \"Escanear\" no README."
 fi

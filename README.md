@@ -16,14 +16,14 @@ sozinhos, sem instalar driver ou app.
   (`@LOCAL`), a administração remota fica desligada e o firewall libera a
   porta 631 só para `192.168.1.0/24`.
 
-A impressora não tem scanner em rede aqui: só a impressão é compartilhada.
+O scanner fica disponível pelo painel **Escanear** (abaixo), não como scanner de rede.
 
 ## Instalação
 
 Com a impressora ligada e conectada na USB:
 
 ```bash
-cd ~/impressora
+cd ~/projetos/impressora
 ./install.sh
 ```
 
@@ -104,8 +104,8 @@ vez pela Tuya IoT Platform:
 3. No Pi:
 
    ```bash
-   cd ~/.config/impressora-energia && ~/impressora/.venv/bin/python -m tinytuya wizard
-   ~/impressora/.venv/bin/python ~/impressora/energia.py configurar
+   cd ~/.config/impressora-energia && ~/projetos/impressora/.venv/bin/python -m tinytuya wizard
+   ~/projetos/impressora/.venv/bin/python ~/projetos/impressora/energia.py configurar
    sudo systemctl restart impressora-energia
    ```
 
@@ -138,9 +138,35 @@ por broadcast (o que sempre acontece entre VLANs) e testa as versões 3.5,
 3.4 e 3.3 do protocolo até ela responder; se nenhuma responder, não salva.
 
 ```bash
-~/impressora/.venv/bin/python ~/impressora/energia.py estado     # tomada e USB
-~/impressora/.venv/bin/python ~/impressora/energia.py ligar      # ou desligar
+~/projetos/impressora/.venv/bin/python ~/projetos/impressora/energia.py estado     # tomada e USB
+~/projetos/impressora/.venv/bin/python ~/projetos/impressora/energia.py ligar      # ou desligar
 journalctl -u impressora-energia -f
+```
+
+## Escanear
+
+Painel web para digitalizar no vidro da impressora e baixar o PDF:
+<https://escanear.tavares.nz> (login do Cloudflare Access), servido pelo
+serviço `escanear` (`escanear/servidor.py`, só Python + Pillow) em
+`http://localhost:8082`.
+
+- Escolha cor (cinza, colorido, P&B) e qualidade (150 ou 300 dpi) e toque
+  em **Digitalizar página**. Para várias páginas, troque a folha e
+  digitalize de novo; dá para remover uma página pelo ✕.
+- **Baixar PDF** junta as páginas num PDF só. **Novo documento** apaga as
+  páginas. Cada aba tem seu documento (em `~/.cache/escanear/`, apagado
+  depois de 6 h).
+- Se a impressora estiver desligada, o painel toca
+  `~/.config/impressora-energia/em-uso` e o `impressora-energia` liga a
+  tomada; enquanto o painel usa o scanner ela não desliga.
+- O nome do scanner no SANE (`xerox_mfp:libusb:…`) muda quando a impressora
+  liga, por isso o painel procura de novo a cada digitalização.
+
+Na rota do túnel: `escanear.tavares.nz` → `http://localhost:8082`.
+
+```bash
+scanimage -L                     # o scanner aparece como xerox_mfp
+journalctl -u escanear -f
 ```
 
 ## Problemas comuns
