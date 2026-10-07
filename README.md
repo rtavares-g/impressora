@@ -145,7 +145,8 @@ journalctl -u impressora-energia -f
 
 ## Escanear
 
-Painel web para digitalizar no vidro da impressora e baixar o PDF:
+Painel web para digitalizar no vidro da impressora e baixar o PDF (ou
+mandar por e-mail para outra pessoa):
 <https://escanear.tavares.nz> (login do Cloudflare Access), servido pelo
 serviço `escanear` (`escanear/servidor.py`, só Python + Pillow) em
 `http://localhost:8082`.
@@ -156,6 +157,8 @@ serviço `escanear` (`escanear/servidor.py`, só Python + Pillow) em
 - **Baixar PDF** junta as páginas num PDF só. **Novo documento** apaga as
   páginas. Cada aba tem seu documento (em `~/.cache/escanear/`, apagado
   depois de 6 h).
+- **Enviar** manda o PDF por e-mail (até 5 endereços, separados por
+  vírgula); o painel lembra os últimos endereços usados naquele navegador.
 - Se a impressora estiver desligada, o painel toca
   `~/.config/impressora-energia/em-uso` e o `impressora-energia` liga a
   tomada; enquanto o painel usa o scanner ela não desliga.
@@ -163,6 +166,24 @@ serviço `escanear` (`escanear/servidor.py`, só Python + Pillow) em
   liga, por isso o painel procura de novo a cada digitalização.
 
 Na rota do túnel: `escanear.tavares.nz` → `http://localhost:8082`.
+
+**E-mail:** sai pela conta do iCloud (o domínio `tavares.nz` é domínio
+personalizado do iCloud Mail). Crie uma senha de app em
+<https://account.apple.com> → Entrar e Segurança → Senhas de app e grave
+`~/.config/escanear/smtp.json` (fora do git, `chmod 600`):
+
+```json
+{
+  "host": "smtp.mail.me.com",
+  "porta": 587,
+  "usuario": "<Apple ID>",
+  "senha": "<senha de app>",
+  "remetente": "Escanear <endereço@tavares.nz>"
+}
+```
+
+O remetente precisa ser um endereço da conta (o próprio iCloud ou um do
+domínio personalizado). Não precisa reiniciar o serviço.
 
 ```bash
 scanimage -L                     # o scanner aparece como xerox_mfp

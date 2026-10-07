@@ -64,11 +64,18 @@
                    background: rgba(0,0,0,.6); color: #fff; border-radius: 99px; }
   .vazio { color: var(--suave); font-size: .93rem; margin: 0; }
   label.campo { display: block; font-size: .88rem; color: var(--suave); margin: 0 0 6px; }
-  input[type=text] {
+  input[type=email], input[type=text] {
     width: 100%; font: inherit; padding: 11px 12px; border-radius: 10px;
     border: 1px solid var(--borda); background: var(--campo); color: var(--texto); margin-bottom: 14px;
   }
   input:focus { outline: 2px solid var(--acento); outline-offset: -1px; border-color: transparent; }
+  .recentes { display: flex; flex-wrap: wrap; gap: 6px; margin: -6px 0 14px; }
+  .recentes button { padding: 4px 10px; font-size: .85rem; font-weight: 400; border-radius: 99px;
+                     background: transparent; color: var(--texto); border: 1px solid var(--borda); }
+  .enviar { display: flex; gap: 10px; }
+  .enviar input { margin-bottom: 14px; }
+  .enviar button { flex: none; height: 46px; }
+  hr { border: 0; border-top: 1px solid var(--borda); margin: 18px 0 16px; }
   .acoes { display: flex; gap: 10px; flex-wrap: wrap; }
   .acoes button { flex: 1 1 160px; }
   a { color: var(--acento); }
@@ -103,13 +110,21 @@
   </section>
 
   <section>
-    <h2>2. Baixar o PDF</h2>
+    <h2>2. Baixar ou enviar o PDF</h2>
     <label class="campo" for="nome">Nome do arquivo (opcional)</label>
     <input type="text" id="nome" placeholder="Digitalização" maxlength="80">
     <div class="acoes">
       <button id="baixar" disabled>Baixar PDF</button>
       <button class="sec" id="limpar" disabled>Novo documento</button>
     </div>
+    <hr>
+    <label class="campo" for="para">Enviar por e-mail para (separe vários com vírgula)</label>
+    <div class="enviar">
+      <input type="email" id="para" multiple autocomplete="email" inputmode="email" placeholder="nome@exemplo.com">
+      <button class="sec" id="enviar" disabled>Enviar</button>
+    </div>
+    <div class="recentes" id="recentes"></div>
+    <div class="status" id="status-envio" aria-live="polite"></div>
   </section>
 </main>
 <script>
@@ -125,6 +140,7 @@ if (!sessao) {
 }
 let lista = [];
 let emAndamento = false;
+let emailOk = true;
 
 function status(el, texto, tipo = "", rodando = false) {
   el.className = "status " + tipo;
@@ -148,7 +164,8 @@ function desenhar(paginas) {
   lista = paginas;
   $("contagem").textContent = lista.length ? `(${lista.length})` : "";
   $("vazio").hidden = lista.length > 0;
-  for (const id of ["baixar", "limpar"]) $(id).disabled = !lista.length;
+  for (const id of ["baixar", "limpar", "enviar"]) $(id).disabled = !lista.length;
+  if (!emailOk) $("enviar").disabled = true;
   if (!mudou) return;
   const caixa = $("paginas");
   caixa.replaceChildren(...lista.map((arq, i) => {
@@ -174,6 +191,8 @@ async function atualizar() {
   catch (err) { status($("status-scan"), "Sem conexão com o Raspberry Pi.", "erro"); return; }
   $("ponto").classList.toggle("on", e.ligada);
   $("impressora").textContent = "Samsung SCX-4200 · " + (e.ligada ? "ligada" : "desligada (liga sozinha ao digitalizar)");
+  emailOk = e.email_configurado;
+  if (!emailOk) status($("status-envio"), "O envio por e-mail ainda não foi configurado no Raspberry Pi.", "erro");
   desenhar(e.paginas);
   const ocupado = ["ligando", "digitalizando"].includes(e.fase);
   emAndamento = ocupado;
@@ -197,6 +216,35 @@ $("digitalizar").onclick = async () => {
   atualizar();
 };
 
+function recentes() {
+  const r = guardar.ler("escanear-recentes", []);
+  $("recentes").replaceChildren(...r.map(email => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = email;
+    b.onclick = () => { $("para").value = email; $("para").focus(); };
+    return b;
+  }));
+}
+
+$("enviar").onclick = async () => {
+  const para = $("para").value.trim();
+  if (!para) { status($("status-envio"), "Digite um endereço de e-mail.", "erro"); $("para").focus(); return; }
+  $("enviar").disabled = true;
+  status($("status-envio"), "Enviando…", "", true);
+  try {
+    const r = await api("/api/enviar", { para, nome: $("nome").value });
+    status($("status-envio"), `Enviado para ${para} (${r.kb} KB).`, "ok");
+    const emails = para.split(/[,;\s]+/).filter(Boolean);
+    const antigos = guardar.ler("escanear-recentes", []).filter(e => !emails.includes(e));
+    guardar.gravar("escanear-recentes", [...emails, ...antigos].slice(0, 6));
+    recentes();
+  } catch (err) {
+    status($("status-envio"), err.message, "erro");
+  } finally {
+    $("enviar").disabled = !lista.length || !emailOk;
+  }
+};
+
 $("baixar").onclick = () => {
   location.href = `/api/pdf?sessao=${sessao}&nome=${encodeURIComponent($("nome").value)}`;
 };
@@ -205,6 +253,7 @@ $("limpar").onclick = async () => {
   if (!confirm("Apagar as páginas digitalizadas e começar um novo documento?")) return;
   desenhar((await api("/api/limpar", {})).paginas);
   $("nome").value = "";
+  status($("status-envio"), "");
   atualizar();
 };
 
@@ -215,6 +264,7 @@ if (op) {
   if (m) m.checked = true;
   if (r) r.checked = true;
 }
+recentes();
 atualizar();
 </script>
 </body>

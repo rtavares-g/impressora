@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Painel web para digitalizar na Samsung SCX-4200 e baixar o PDF.
+"""Painel web para digitalizar na Samsung SCX-4200, baixar o PDF ou mandar
+por e-mail para outra pessoa.
 
 Cada aba do navegador tem um documento (as páginas digitalizadas até agora),
 guardado em ~/.cache/escanear/<sessão>/. O scanner é um só: enquanto uma
@@ -7,14 +8,19 @@ digitalização roda, as outras esperam (409).
 
 Se a impressora estiver desligada, o painel marca ~/.config/impressora-energia/em-uso
 e o serviço impressora-energia liga a tomada, como faz com trabalhos na fila.
+
+O e-mail usa a conta em ~/.config/escanear/smtp.json (fora do git), ver README.
 """
 import json
 import re
 import shutil
+import smtplib
 import subprocess
 import sys
 import threading
 import time
+from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from io import BytesIO
@@ -26,15 +32,18 @@ from PIL import Image
 PORTA = 8082
 AQUI = Path(__file__).resolve().parent
 CACHE = Path.home() / ".cache" / "escanear"
+SMTP_CONFIG = Path.home() / ".config" / "escanear" / "smtp.json"
 EM_USO = Path.home() / ".config" / "impressora-energia" / "em-uso"
 USB_ID = ("04e8", "341b")  # Samsung SCX-4200
 ESPERA_LIGAR = 120         # segundos esperando a impressora aparecer na USB
 VALIDADE_SESSAO = 6 * 3600
 MAX_PAGINAS = 40
+MAX_DESTINATARIOS = 5
 RESOLUCOES = (150, 300)
 MODOS = {"cinza": "Gray", "cor": "Color", "pb": "Lineart"}
 
 SESSAO_RE = re.compile(r"^[a-f0-9]{16,64}$")
+EMAIL_RE = re.compile(r"^[^@\s,;<>]+@[^@\s,;<>]+\.[a-z]{2,}$", re.I)
 ARQUIVO_RE = re.compile(r"^\d{3}\.jpg$")
 
 scanner = threading.Lock()
@@ -170,6 +179,29 @@ def nome_arquivo(nome):
     return (nome or time.strftime("Digitalizacao %Y-%m-%d %H%M")) + ".pdf"
 
 
+def enviar_email(destinatarios, assunto, nome, pdf):
+    if not SMTP_CONFIG.exists():
+        raise RuntimeError("o envio por e-mail ainda não foi configurado no Raspberry Pi.")
+    cfg = json.loads(SMTP_CONFIG.read_text())
+    msg = EmailMessage()
+    msg["From"] = cfg.get("remetente", cfg["usuario"])
+    msg["To"] = ", ".join(destinatarios)
+    msg["Subject"] = assunto
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid()
+    msg.set_content("Segue em anexo o documento digitalizado.\n")
+    msg.add_attachment(pdf, maintype="application", subtype="pdf", filename=nome)
+    porta = int(cfg.get("porta", 587))
+    if porta == 465:
+        conexao = smtplib.SMTP_SSL(cfg["host"], porta, timeout=60)
+    else:
+        conexao = smtplib.SMTP(cfg["host"], porta, timeout=60)
+        conexao.starttls()
+    with conexao:
+        conexao.login(cfg["usuario"], cfg["senha"])
+        conexao.send_message(msg)
+
+
 class Painel(BaseHTTPRequestHandler):
     server_version = "escanear"
 
@@ -225,6 +257,7 @@ class Painel(BaseHTTPRequestHandler):
                 "msg": t["msg"] if meu else "",
                 "paginas": paginas(sessao),
                 "ligada": impressora_na_usb(),
+                "email_configurado": SMTP_CONFIG.exists(),
             })
         elif len(partes) == 4 and partes[:2] == ["api", "pagina"]:
             sessao, arquivo = partes[2], partes[3]
@@ -283,6 +316,29 @@ class Painel(BaseHTTPRequestHandler):
                 if trabalho["sessao"] == sessao and trabalho["fase"] in ("pronto", "erro"):
                     trabalho.update(sessao=None, fase="parado", msg="")
             self.responder(HTTPStatus.OK, {"paginas": []})
+
+        elif caminho == "/api/enviar":
+            texto = str(dados.get("para", ""))
+            destinatarios = [e.strip() for e in re.split(r"[,;\s]+", texto) if e.strip()]
+            if not destinatarios:
+                return self.erro(HTTPStatus.BAD_REQUEST, "Digite um endereço de e-mail.")
+            invalidos = [e for e in destinatarios if not EMAIL_RE.match(e)]
+            if invalidos:
+                return self.erro(HTTPStatus.BAD_REQUEST, f"E-mail inválido: {', '.join(invalidos)}")
+            if len(destinatarios) > MAX_DESTINATARIOS:
+                return self.erro(HTTPStatus.BAD_REQUEST, f"No máximo {MAX_DESTINATARIOS} destinatários.")
+            pdf = montar_pdf(sessao)
+            if not pdf:
+                return self.erro(HTTPStatus.BAD_REQUEST, "Digitalize pelo menos uma página.")
+            nome = nome_arquivo(dados.get("nome"))
+            usuario = self.headers.get("Cf-Access-Authenticated-User-Email", "?")
+            try:
+                enviar_email(destinatarios, nome[:-4], nome, pdf)
+            except Exception as e:  # noqa: BLE001
+                log(f"Falha ao enviar para {destinatarios}: {e}")
+                return self.erro(HTTPStatus.BAD_GATEWAY, f"Não foi possível enviar: {e}")
+            log(f"{usuario} enviou {nome} ({len(paginas(sessao))} pág., {len(pdf) // 1024} KB) para {destinatarios}")
+            self.responder(HTTPStatus.OK, {"ok": True, "kb": len(pdf) // 1024})
 
         else:
             self.erro(HTTPStatus.NOT_FOUND, "Não encontrado.")
