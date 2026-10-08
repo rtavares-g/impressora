@@ -28,7 +28,7 @@ cd ~/projetos/impressora
 ```
 
 O script instala os pacotes, cria a fila `Samsung_SCX4200` (papel A4, padrão
-do sistema) e abre o firewall. Pode ser rodado de novo sem problema. Para
+do sistema) e a econômica `Samsung_SCX4200_Eco` e abre o firewall. Pode ser rodado de novo sem problema. Para
 mudar o nome da fila ou a rede liberada:
 
 ```bash
@@ -37,9 +37,18 @@ FILA=Samsung REDE_LOCAL=192.168.0.0/24 ./install.sh
 
 ## Imprimindo
 
-- **iPhone/iPad:** Compartilhar → Imprimir → escolha **Samsung SCX-4200**.
+- **iPhone/iPad:** Compartilhar → Imprimir → escolha **Samsung SCX-4200**,
+  ou **Samsung SCX-4200 (Econômica)** para gastar menos toner.
 - **Mac:** aparece na lista de impressoras do diálogo de impressão.
 - **No próprio Pi:** `lp -d Samsung_SCX4200 arquivo.pdf`
+
+### Impressão econômica
+
+O AirPrint do iPhone não mostra as opções do driver, então a economia de
+toner é uma segunda fila, `Samsung_SCX4200_Eco`, para a mesma impressora, com
+**Toner Save** (`EconoMode=ON`) e **toner claro** (`TonerDensity=1`) por
+padrão. Ela aparece como **Samsung SCX-4200 (Econômica)**. O
+`impressora-energia` liga a tomada para as duas filas.
 
 ## Verificando
 
@@ -204,6 +213,7 @@ journalctl -u escaner -f
 |---|---|
 | Não aparece no iPhone | Confira se o aparelho está na mesma rede (192.168.1.x) e se `avahi-browse` mostra a impressora |
 | Trabalho fica parado | `lpstat -p`: se estiver "disabled", rode `cupsenable Samsung_SCX4200` |
+| Trabalho falha com "Filter failed" (`rastertoqpdl crashed on signal 11` no log) | O filtro do splix às vezes trava logo que a impressora liga. As filas usam `printer-error-policy=retry-job`, então o CUPS tenta de novo sozinho em 30 s |
 | Trabalho falha com "Unable to send data to printer" e a impressora desconecta da USB | Geralmente é falta de papel: a impressora para de aceitar dados. Coloque papel e rode `cupsenable Samsung_SCX4200` |
 | Trabalho parado em "Waiting for printer to become available" | A tomada não ligou: veja `journalctl -u impressora-energia` e `energia.py estado` |
 | Impressora desligada ou reconectada | O CUPS retoma sozinho quando ela volta; se não, rode `./install.sh` de novo |

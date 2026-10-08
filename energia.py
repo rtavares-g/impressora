@@ -15,7 +15,8 @@ from pathlib import Path
 
 import tinytuya
 
-FILA = "Samsung_SCX4200"
+# A econômica é a mesma impressora com Toner Save ligado (ver install.sh)
+FILAS = ("Samsung_SCX4200", "Samsung_SCX4200_Eco")
 USB_ID = ("04e8", "341b")  # Samsung SCX-4200
 PASTA = Path.home() / ".config" / "impressora-energia"
 CONFIG = PASTA / "config.json"
@@ -79,15 +80,16 @@ def reabilitar_fila():
     """O udev-configure-printer desabilita a fila quando a impressora sai da
     USB e não consegue reabilitar quando ela volta. Só reabilita se foi esse
     o motivo: falta de papel e outros erros continuam parados."""
-    r = subprocess.run(["lpstat", "-p", FILA], capture_output=True, text=True,
-                       env={"LC_ALL": "C", "LANG": "C", "PATH": "/usr/bin:/bin"})
-    if "disabled" in r.stdout and "Unplugged or turned off" in r.stdout:
-        subprocess.run(["cupsenable", FILA])
-        log("Fila reabilitada.")
+    for fila in FILAS:
+        r = subprocess.run(["lpstat", "-p", fila], capture_output=True, text=True,
+                           env={"LC_ALL": "C", "LANG": "C", "PATH": "/usr/bin:/bin"})
+        if "disabled" in r.stdout and "Unplugged or turned off" in r.stdout:
+            subprocess.run(["cupsenable", fila])
+            log(f"Fila {fila} reabilitada.")
 
 
 def tem_trabalhos():
-    r = subprocess.run(["lpstat", "-o", FILA], capture_output=True, text=True)
+    r = subprocess.run(["lpstat", "-o", ",".join(FILAS)], capture_output=True, text=True)
     return bool(r.stdout.strip())
 
 
@@ -110,7 +112,7 @@ def servico():
     ultima_atividade = time.monotonic()
     ultima_tentativa_ligar = 0.0
     estava_na_usb = impressora_na_usb()
-    log(f"Monitorando a fila {FILA}; desliga após {desligar_apos // 60} min sem trabalhos.")
+    log(f"Monitorando as filas {', '.join(FILAS)}; desliga após {desligar_apos // 60} min sem trabalhos.")
 
     while True:
         agora = time.monotonic()

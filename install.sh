@@ -67,6 +67,19 @@ sudo lpadmin -p "$FILA" -E -v "$URI" -m "$PPD" \
     -o printer-is-shared=true -o PageSize=A4
 sudo lpadmin -d "$FILA"
 
+# Mesma impressora com Toner Save e toner claro: o iPhone não mostra essas
+# opções no AirPrint, então ela aparece como uma impressora à parte.
+echo "==> Criando a fila econômica ${FILA}_Eco"
+sudo lpadmin -p "${FILA}_Eco" -E -v "$URI" -m "$PPD" \
+    -D "Samsung SCX-4200 (Econômica)" -L "Raspberry Pi" \
+    -o printer-is-shared=true -o PageSize=A4 -o EconoMode=ON -o TonerDensity=1
+
+# O filtro do splix às vezes trava (signal 11) quando a impressora acabou
+# de ligar; em vez de descartar o trabalho, o CUPS tenta de novo.
+for f in "$FILA" "${FILA}_Eco"; do
+    sudo lpadmin -p "$f" -o printer-error-policy=retry-job
+done
+
 if command -v ufw >/dev/null && sudo ufw status | grep -q "Status: active"; then
     echo "==> Liberando IPP (631/tcp) e mDNS (5353/udp) no firewall para $REDE_LOCAL"
     sudo ufw allow from "$REDE_LOCAL" to any port 631 proto tcp comment "CUPS/AirPrint"
@@ -75,7 +88,7 @@ fi
 
 echo
 echo "Pronto. Fila: $FILA"
-lpstat -p "$FILA"
+lpstat -p "$FILA" "${FILA}_Eco"
 echo "Teste local: lp -d $FILA /usr/share/cups/data/testprint"
 
 echo "==> Serviço que liga/desliga a tomada Tuya da impressora"
