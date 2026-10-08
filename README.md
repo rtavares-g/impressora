@@ -147,7 +147,7 @@ journalctl -u impressora-energia -f
 
 Painel web para digitalizar no vidro da impressora e baixar o PDF (ou
 mandar por e-mail para outra pessoa):
-<https://escanear.tavares.nz> (login do Cloudflare Access), servido pelo
+<https://escaner.tavares.nz> (login do Cloudflare Access), servido pelo
 serviço `escanear` (`escanear/servidor.py`, só Python + Pillow) em
 `http://localhost:8082`.
 
@@ -168,7 +168,7 @@ serviço `escanear` (`escanear/servidor.py`, só Python + Pillow) em
 - O nome do scanner no SANE (`xerox_mfp:libusb:…`) muda quando a impressora
   liga, por isso o painel procura de novo a cada digitalização.
 
-Na rota do túnel: `escanear.tavares.nz` → `http://localhost:8082`.
+Na rota do túnel: `escaner.tavares.nz` → `http://localhost:8082`.
 
 **E-mail:** sai pela conta do iCloud (o domínio `tavares.nz` é domínio
 personalizado do iCloud Mail). Crie uma senha de app em

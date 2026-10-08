@@ -1,5 +1,5 @@
 [Unit]
-Description=Painel de digitalização da impressora (escanear.tavares.nz)
+Description=Painel de digitalização da impressora (escaner.tavares.nz)
 After=network-online.target
 Wants=network-online.target
 

@@ -93,7 +93,7 @@ if [ ! -f "$HOME/.config/impressora-energia/config.json" ]; then
     echo "    Falta configurar a tomada: veja \"Tomada Tuya\" no README."
 fi
 
-echo "==> Painel de digitalização (escanear.tavares.nz -> http://localhost:8082)"
+echo "==> Painel de digitalização (escaner.tavares.nz -> http://localhost:8082)"
 sudo apt-get install -y sane-utils python3-pil
 sed -e "s|__USER__|$USER|g" -e "s|__DIR__|$DIR|g" "$DIR/escanear.service" \
     | sudo tee /etc/systemd/system/escanear.service > /dev/null
