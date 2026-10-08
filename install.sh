@@ -95,11 +95,20 @@ fi
 
 echo "==> Painel de digitalização (escaner.tavares.nz -> http://localhost:8082)"
 sudo apt-get install -y sane-utils python3-pil
-sed -e "s|__USER__|$USER|g" -e "s|__DIR__|$DIR|g" "$DIR/escanear.service" \
-    | sudo tee /etc/systemd/system/escanear.service > /dev/null
+# Instalações antigas usavam o nome "escanear" (serviço e config)
+if [ -f /etc/systemd/system/escanear.service ]; then
+    sudo systemctl disable --now escanear
+    sudo rm /etc/systemd/system/escanear.service
+fi
+if [ -d "$HOME/.config/escanear" ] && [ ! -e "$HOME/.config/escaner" ]; then
+    mv "$HOME/.config/escanear" "$HOME/.config/escaner"
+fi
+rm -rf "$HOME/.cache/escanear"
+sed -e "s|__USER__|$USER|g" -e "s|__DIR__|$DIR|g" "$DIR/escaner.service" \
+    | sudo tee /etc/systemd/system/escaner.service > /dev/null
 sudo systemctl daemon-reload
-sudo systemctl enable escanear
-sudo systemctl restart escanear impressora-energia
-if [ ! -f "$HOME/.config/escanear/smtp.json" ]; then
-    echo "    Falta configurar o envio de e-mail: veja \"Escanear\" no README."
+sudo systemctl enable escaner
+sudo systemctl restart escaner impressora-energia
+if [ ! -f "$HOME/.config/escaner/smtp.json" ]; then
+    echo "    Falta configurar o envio de e-mail: veja \"Escaner\" no README."
 fi

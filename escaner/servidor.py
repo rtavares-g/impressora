@@ -3,14 +3,15 @@
 por e-mail para outra pessoa.
 
 Cada aba do navegador tem um documento (as páginas digitalizadas até agora),
-guardado em ~/.cache/escanear/<sessão>/. O scanner é um só: enquanto uma
+guardado em ~/.cache/escaner/<sessão>/. O scanner é um só: enquanto uma
 digitalização roda, as outras esperam (409).
 
 Se a impressora estiver desligada, o painel marca ~/.config/impressora-energia/em-uso
 e o serviço impressora-energia liga a tomada, como faz com trabalhos na fila.
 
-O e-mail usa a conta em ~/.config/escanear/smtp.json (fora do git), ver README.
+O e-mail usa a conta em ~/.config/escaner/smtp.json (fora do git), ver README.
 """
+import html
 import json
 import re
 import shutil
@@ -32,8 +33,8 @@ from PIL import Image
 
 PORTA = 8082
 AQUI = Path(__file__).resolve().parent
-CACHE = Path.home() / ".cache" / "escanear"
-SMTP_CONFIG = Path.home() / ".config" / "escanear" / "smtp.json"
+CACHE = Path.home() / ".cache" / "escaner"
+SMTP_CONFIG = Path.home() / ".config" / "escaner" / "smtp.json"
 EM_USO = Path.home() / ".config" / "impressora-energia" / "em-uso"
 USB_ID = ("04e8", "341b")  # Samsung SCX-4200
 ESPERA_LIGAR = 120         # segundos esperando a impressora aparecer na USB
@@ -194,17 +195,37 @@ def nome_arquivo(nome):
     return (nome or time.strftime("Digitalizacao %Y-%m-%d %H%M")) + ".pdf"
 
 
-def enviar_email(destinatarios, assunto, nome, pdf):
+def enviar_email(destinatarios, nome, pdf, n_paginas, personalizado):
     if not SMTP_CONFIG.exists():
         raise RuntimeError("o envio por e-mail ainda não foi configurado no Raspberry Pi.")
     cfg = json.loads(SMTP_CONFIG.read_text())
+    quando = time.strftime("%d/%m/%Y às %H:%M")
+    titulo = nome[:-4] if personalizado else "Documento digitalizado"
+    paginas_txt = f"{n_paginas} página" + ("s" if n_paginas != 1 else "")
+    tamanho = f"{len(pdf) / 1024 / 1024:.1f} MB" if len(pdf) >= 1024 * 1024 else f"{len(pdf) // 1024} KB"
     msg = EmailMessage()
     msg["From"] = cfg.get("remetente", cfg["usuario"])
     msg["To"] = ", ".join(destinatarios)
-    msg["Subject"] = assunto
+    msg["Subject"] = f"{titulo} · {time.strftime('%d/%m/%Y %H:%M')}"
     msg["Date"] = formatdate(localtime=True)
     msg["Message-ID"] = make_msgid()
-    msg.set_content("Segue em anexo o documento digitalizado.\n")
+    msg.set_content(
+        f"Olá!\n\n"
+        f"Segue em anexo o documento digitalizado em {quando}.\n\n"
+        f"Arquivo: {nome}\n"
+        f"{paginas_txt} · {tamanho}\n\n"
+        f"—\nEscaner Tavares\n")
+    msg.add_alternative(f"""\
+<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;color:#222;line-height:1.5">
+  <p>Olá!</p>
+  <p>Segue em anexo o documento digitalizado em {html.escape(quando)}.</p>
+  <table style="border-collapse:collapse;margin:12px 0;background:#f4f4f2;border-radius:8px">
+    <tr><td style="padding:10px 14px">📄 <b>{html.escape(nome)}</b><br>
+      <span style="color:#666;font-size:13px">{paginas_txt} · {tamanho}</span></td></tr>
+  </table>
+  <p style="color:#888;font-size:13px">— Escaner Tavares</p>
+</div>
+""", subtype="html")
     msg.add_attachment(pdf, maintype="application", subtype="pdf", filename=nome)
     porta = int(cfg.get("porta", 587))
     if porta == 465:
@@ -223,7 +244,7 @@ def nome_ascii(nome):
 
 
 class Painel(BaseHTTPRequestHandler):
-    server_version = "escanear"
+    server_version = "escaner"
 
     def log_message(self, fmt, *args):
         pass
@@ -364,7 +385,8 @@ class Painel(BaseHTTPRequestHandler):
             nome = nome_arquivo(dados.get("nome"))
             usuario = self.headers.get("Cf-Access-Authenticated-User-Email", "?")
             try:
-                enviar_email(destinatarios, nome[:-4], nome, pdf)
+                enviar_email(destinatarios, nome, pdf, len(paginas(sessao)),
+                             bool((dados.get("nome") or "").strip()))
             except Exception as e:  # noqa: BLE001
                 log(f"Falha ao enviar para {destinatarios}: {e}")
                 return self.erro(HTTPStatus.BAD_GATEWAY, f"Não foi possível enviar: {e}")

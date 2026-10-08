@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Escanear</title>
+<title>Escaner</title>
 <meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#18191b" media="(prefers-color-scheme: dark)">
 <style>
@@ -99,7 +99,7 @@
 </head>
 <body>
 <main>
-  <h1>Escanear</h1>
+  <h1>Escaner</h1>
   <p class="sub"><span class="ponto" id="ponto"></span><span id="impressora">Samsung SCX-4200</span></p>
 
   <section>
@@ -163,10 +163,10 @@ const guardar = {
   ler(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
   gravar(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
-let sessao = guardar.ler("escanear-sessao", null);
+let sessao = guardar.ler("escaner-sessao", null);
 if (!sessao) {
   sessao = [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, "0")).join("");
-  guardar.gravar("escanear-sessao", sessao);
+  guardar.gravar("escaner-sessao", sessao);
 }
 let lista = [];
 let emAndamento = false;
@@ -260,7 +260,7 @@ async function atualizar() {
 $("digitalizar").onclick = async () => {
   const modo = document.querySelector("input[name=modo]:checked").value;
   const resolucao = +document.querySelector("input[name=res]:checked").value;
-  guardar.gravar("escanear-opcoes", { modo, resolucao });
+  guardar.gravar("escaner-opcoes", { modo, resolucao });
   $("digitalizar").disabled = true;
   try {
     await api("/api/digitalizar", { modo, resolucao });
@@ -270,7 +270,7 @@ $("digitalizar").onclick = async () => {
 };
 
 function recentes() {
-  const r = guardar.ler("escanear-recentes", []);
+  const r = guardar.ler("escaner-recentes", []);
   $("recentes").replaceChildren(...r.map(email => {
     const b = document.createElement("button");
     b.type = "button"; b.textContent = email;
@@ -288,8 +288,8 @@ $("enviar").onclick = async () => {
     const r = await api("/api/enviar", { para, nome: $("nome").value });
     status($("status-envio"), `Enviado para ${para} (${r.kb} KB).`, "ok");
     const emails = para.split(/[,;\s]+/).filter(Boolean);
-    const antigos = guardar.ler("escanear-recentes", []).filter(e => !emails.includes(e));
-    guardar.gravar("escanear-recentes", [...emails, ...antigos].slice(0, 6));
+    const antigos = guardar.ler("escaner-recentes", []).filter(e => !emails.includes(e));
+    guardar.gravar("escaner-recentes", [...emails, ...antigos].slice(0, 6));
     recentes();
   } catch (err) {
     status($("status-envio"), err.message, "erro");
@@ -351,7 +351,7 @@ $("limpar").onclick = async () => {
   atualizar();
 };
 
-const op = guardar.ler("escanear-opcoes", null);
+const op = guardar.ler("escaner-opcoes", null);
 if (op) {
   const m = document.querySelector(`input[name=modo][value="${op.modo}"]`);
   const r = document.querySelector(`input[name=res][value="${op.resolucao}"]`);

@@ -16,7 +16,7 @@ sozinhos, sem instalar driver ou app.
   (`@LOCAL`), a administração remota fica desligada e o firewall libera a
   porta 631 só para `192.168.1.0/24`.
 
-O scanner fica disponível pelo painel **Escanear** (abaixo), não como scanner de rede.
+O scanner fica disponível pelo painel **Escaner** (abaixo), não como scanner de rede.
 
 ## Instalação
 
@@ -143,12 +143,12 @@ por broadcast (o que sempre acontece entre VLANs) e testa as versões 3.5,
 journalctl -u impressora-energia -f
 ```
 
-## Escanear
+## Escaner
 
 Painel web para digitalizar no vidro da impressora e baixar o PDF (ou
 mandar por e-mail para outra pessoa):
 <https://escaner.tavares.nz> (login do Cloudflare Access), servido pelo
-serviço `escanear` (`escanear/servidor.py`, só Python + Pillow) em
+serviço `escaner` (`escaner/servidor.py`, só Python + Pillow) em
 `http://localhost:8082`.
 
 - Escolha cor (cinza, colorido, P&B) e resolução (75, 100, 150, 200 ou 300 dpi; 600 trava o scanner) e toque
@@ -158,7 +158,7 @@ serviço `escanear` (`escanear/servidor.py`, só Python + Pillow) em
   passar); depois de digitalizar, a página nova abre sozinha.
 - **Abrir PDF** junta as páginas num PDF só e abre numa nova guia (no
   iPhone não há download direto; salve de lá). **Novo documento** apaga as
-  páginas. Cada aba tem seu documento (em `~/.cache/escanear/`, apagado
+  páginas. Cada aba tem seu documento (em `~/.cache/escaner/`, apagado
   depois de 6 h).
 - **Enviar** manda o PDF por e-mail (até 5 endereços, separados por
   vírgula); o painel lembra os últimos endereços usados naquele navegador.
@@ -173,7 +173,7 @@ Na rota do túnel: `escaner.tavares.nz` → `http://localhost:8082`.
 **E-mail:** sai pela conta do iCloud (o domínio `tavares.nz` é domínio
 personalizado do iCloud Mail). Crie uma senha de app em
 <https://account.apple.com> → Entrar e Segurança → Senhas de app e grave
-`~/.config/escanear/smtp.json` (fora do git, `chmod 600`):
+`~/.config/escaner/smtp.json` (fora do git, `chmod 600`):
 
 ```json
 {
@@ -181,7 +181,7 @@ personalizado do iCloud Mail). Crie uma senha de app em
   "porta": 587,
   "usuario": "<Apple ID>",
   "senha": "<senha de app>",
-  "remetente": "Escanear <endereço@tavares.nz>"
+  "remetente": "Escaner <endereço@tavares.nz>"
 }
 ```
 
@@ -193,7 +193,7 @@ Não precisa reiniciar o serviço.
 
 ```bash
 scanimage -L                     # o scanner aparece como xerox_mfp
-journalctl -u escanear -f
+journalctl -u escaner -f
 ```
 
 ## Problemas comuns
