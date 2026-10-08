@@ -59,7 +59,7 @@ vindas do próprio Pi.
 | De onde | Endereço |
 |---|---|
 | Fora de casa | <https://impressora.tavares.nz> (login do Cloudflare Access) |
-| Rede de casa | <http://192.168.1.10:631> (só consulta: fila e impressora) |
+| Rede de casa | <http://RaspberryPi-5.local:631> ou <http://192.168.1.15:631> (só consulta: fila e impressora) |
 | No próprio Pi | <http://localhost:631> |
 
 O acesso externo passa pelo Cloudflare Tunnel do Raspberry Pi
@@ -114,10 +114,12 @@ vez pela Tuya IoT Platform:
    Informações) e grava `devices.json` com as chaves. O `configurar` mostra a
    lista, você escolhe a tomada e ele salva `config.json` (fora do git).
 
-**Rede:** a tomada fica na VLAN IoT (`10.10.0.0/24`, isolada) com IP fixo
-`10.10.0.174`. No UniFi há uma regra *Pi -> tomada impressora (Tuya)*
-liberando só `192.168.1.10` → `10.10.0.174` TCP 6668 (com retorno), acima da
-"Isolated Networks". Como a busca por broadcast não atravessa VLANs, o IP
+**Rede:** o Raspberry Pi 5 fica em `192.168.1.15` (cabo, IP fixo no UniFi) e
+a tomada na VLAN IoT (`10.10.0.0/24`, isolada) com IP fixo `10.10.0.65`. No
+UniFi há uma regra *Pi -> tomada impressora (Tuya)* liberando só
+`192.168.1.15` (Pi 5) e `192.168.1.10` (Home Assistant) → `10.10.0.65` TCP
+6668 (com retorno), acima da "Isolated Networks". Se o Pi mudar de IP,
+atualize a regra. Como a busca por broadcast não atravessa VLANs, o IP
 fica fixo no `config.json`; se mudar, ajuste lá. A tomada (EKAZA 20A) usa o
 protocolo Tuya **3.5**.
 
@@ -132,7 +134,7 @@ removida e pareada de novo no app: aí rode o wizard e o `configurar` de novo.
 
 **Trocando a tomada:** pareie a nova no Smart Life (ela aparece no projeto
 Tuya sozinha), rode o wizard e o `configurar` de novo e dê a ela o IP fixo
-`10.10.0.174` no UniFi (tirando a reserva da antiga), assim a regra de
+`10.10.0.65` no UniFi (tirando a reserva da antiga), assim a regra de
 firewall continua valendo. O `configurar` pede o IP quando não acha a tomada
 por broadcast (o que sempre acontece entre VLANs) e testa as versões 3.5,
 3.4 e 3.3 do protocolo até ela responder; se nenhuma responder, não salva.
